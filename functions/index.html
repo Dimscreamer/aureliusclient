@@ -12,7 +12,7 @@
     <link rel="manifest" href="/site.webmanifest?v=1.1">
     <link rel="shortcut icon" href="/favicon.ico">
     <meta name="theme-color" content="#020203">
-    
+
     <title>Aurelius CRM | Intelligence Edition</title>
     
     <!-- Внешние зависимости -->
@@ -32,9 +32,9 @@
             --warning: #facc15;
             --paused: #94a3b8;
         }
-        
+
         * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg-dark);
@@ -45,42 +45,42 @@
             flex-direction: column;
             overflow: hidden;
         }
-        
+
         @media (min-width: 768px) { body { flex-direction: row; } }
-        
+
         .glass {
             background: var(--glass-bg);
             backdrop-filter: blur(20px) saturate(180%);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        
+
         .overdue-pulse {
             animation: pulse-danger 2s infinite;
         }
-        
+
         @keyframes pulse-danger {
             0% { box-shadow: 0 0 0 0 rgba(255, 62, 62, 0.1); border-color: rgba(255, 62, 62, 0.3); }
             50% { box-shadow: 0 0 25px 0 rgba(255, 62, 62, 0.4); border-color: rgba(255, 62, 62, 0.6); }
             100% { box-shadow: 0 0 0 0 rgba(255, 62, 62, 0.1); border-color: rgba(255, 62, 62, 0.3); }
         }
-        
+
         .custom-scrollbar::-webkit-scrollbar { width: 3px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb {
             background: var(--cyan-neon);
             border-radius: 10px;
         }
-        
+
         .nav-link { border-left: 3px solid transparent; transition: all 0.2s ease; cursor: pointer; }
         .nav-link.active {
             background: linear-gradient(90deg, rgba(6, 182, 212, 0.15) 0%, transparent 100%);
             border-left-color: var(--cyan-neon);
             color: white;
         }
-        
+
         .view-section { display: none; opacity: 0; transform: translateY(10px); transition: all 0.4s ease; height: 100%; }
         .view-section.active { display: block; opacity: 1; transform: translateY(0); }
-        
+
         input, select, textarea {
             color: #ffffff !important;
             background: rgba(255, 255, 255, 0.07) !important;
@@ -93,12 +93,12 @@
         
         input:focus, textarea:focus { border-color: var(--cyan-neon) !important; }
         input::-webkit-calendar-picker-indicator { filter: invert(1); }
-        
+
         .url-input {
             text-align: left !important;
             direction: ltr !important;
         }
-        
+
         #bg-canvas { position: fixed; top: 0; left: 0; z-index: 0; pointer-events: none; }
         
         .stat-card {
@@ -109,7 +109,7 @@
             transition: all 0.3s ease;
         }
         .stat-card:hover { border-color: var(--cyan-neon); background: rgba(0, 242, 255, 0.02); }
-        
+
         main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; z-index: 1; }
         .content-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
         
@@ -121,7 +121,7 @@
             transition: all 0.2s;
         }
         .quick-action-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
-        
+
         .risk-alert {
             background: var(--danger);
             color: white;
@@ -137,13 +137,13 @@
             z-index: 20;
             box-shadow: 0 4px 12px rgba(255, 62, 62, 0.4);
         }
-        
+
         #autosave-indicator {
             opacity: 0;
             transition: opacity 0.5s ease;
         }
         #autosave-indicator.active { opacity: 1; }
-        
+
         .history-item {
             padding: 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
@@ -154,7 +154,7 @@
         }
         
         .history-item:hover { background: rgba(255,255,255,0.02); }
-        
+
         .cohort-badge {
             padding: 2px 8px;
             border-radius: 6px;
@@ -163,7 +163,7 @@
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
-        
+
         .nav-btn {
             padding: 6px;
             border-radius: 10px;
@@ -171,14 +171,14 @@
             transition: all 0.2s;
         }
         .nav-btn:hover { background: rgba(255, 255, 255, 0.05); color: white; }
-        
+
         .card-glow {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .card-glow:hover {
             transform: translateY(-5px);
         }
-        
+
         .sort-chip {
             padding: 6px 14px;
             border-radius: 10px;
@@ -203,7 +203,7 @@
             color: var(--cyan-neon);
             box-shadow: 0 0 15px rgba(0, 242, 255, 0.15);
         }
-        
+
         /* Toggle Switch */
         .toggle-switch {
             width: 36px;
@@ -231,7 +231,7 @@
             background: var(--cyan-neon);
             box-shadow: 0 0 10px var(--cyan-neon);
         }
-        
+
         /* Pull to Refresh Styles */
         #ptr-indicator {
             height: 0;
@@ -248,13 +248,13 @@
         }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
+
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="selection:bg-cyan-500/30">
     <canvas id="bg-canvas"></canvas>
-    
+
     <!-- Модальное окно подтверждения -->
     <div id="delete-modal" class="fixed inset-0 items-center justify-center p-6 bg-black/80 backdrop-blur-md hidden z-[1000]">
         <div class="glass max-w-sm w-full p-8 rounded-[2rem] text-center border border-white/10">
@@ -269,10 +269,10 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Mobile Backdrop -->
     <div id="mobile-backdrop" onclick="toggleMobileMenu()" class="fixed inset-0 bg-black/80 z-40 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
-    
+
     <aside id="mobile-menu" class="glass border-r border-white/5 flex flex-col shrink-0 w-64 md:relative fixed inset-y-0 left-0 z-50 md:translate-x-0 -translate-x-full transition-transform duration-300">
         <div class="h-20 flex items-center justify-between px-6 border-b border-white/5">
             <div class="flex items-center gap-3">
@@ -301,7 +301,7 @@
                 <span class="font-bold uppercase tracking-widest text-[11px]">Аналитика</span>
             </div>
         </nav>
-        
+
         <div class="p-4 border-t border-white/5">
             <div class="flex items-center gap-3 bg-black/40 p-3 rounded-xl border border-white/5">
                 <span id="status-dot" class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
@@ -309,7 +309,7 @@
             </div>
         </div>
     </aside>
-    
+
     <main>
         <header class="glass border-b border-white/5 px-5 md:px-10 py-4 flex flex-col gap-4 shrink-0">
             <div class="flex items-center justify-between">
@@ -317,7 +317,7 @@
                     <button onclick="toggleMobileMenu()" class="md:hidden w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white border border-white/10 active:scale-95 transition-transform">
                         <i data-lucide="menu" class="w-5 h-5"></i>
                     </button>
-                    
+
                     <div>
                         <h2 id="page-title" class="text-lg md:text-xl font-bold text-white flex items-center gap-3 tracking-tight mb-3 uppercase tracking-widest">
                             <i data-lucide="users" class="w-5 h-5 text-cyan-400"></i> База клиентов
@@ -336,20 +336,20 @@
                 </div>
             </div>
         </header>
-        
+
         <div class="content-scroll custom-scrollbar" id="content-container">
             <div id="ptr-indicator">
                 <i data-lucide="loader-2" class="w-4 h-4 mr-2"></i> Обновление...
             </div>
-            
+
             <div id="clients-view" class="view-section active p-5 md:p-10">
                 <div id="clients-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pb-20"></div>
             </div>
-            
+
             <div id="archive-view" class="view-section p-5 md:p-10">
                 <div id="archive-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 pb-20"></div>
             </div>
-            
+
             <div id="analytics-view" class="view-section p-5 md:p-10">
                 <div class="max-w-6xl mx-auto space-y-8 pb-20">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -373,7 +373,7 @@
                             <h3 id="stat-active-count" class="text-3xl font-bold text-indigo-400">0</h3>
                         </div>
                     </div>
-                    
+
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
                         <div class="glass rounded-3xl p-8 lg:col-span-1 border-white/5">
                             <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
@@ -396,7 +396,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div id="details-view" class="view-section p-4 md:p-10">
                 <div id="details-container" class="max-w-6xl mx-auto">
                     <div class="flex items-center justify-between mb-8">
@@ -421,7 +421,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-20">
                         <div class="lg:col-span-4 space-y-6">
                             <div id="profile-card-container" class="glass rounded-[2.5rem] p-8 text-center relative overflow-hidden transition-all duration-500 border-2">
@@ -451,7 +451,7 @@
                                     </select>
                                 </div>
                             </div>
-                            
+
                             <div class="glass rounded-[2rem] p-8 border-white/5">
                                 <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
                                     <i data-lucide="banknote" class="w-4 h-4 text-cyan-400"></i> Финансы
@@ -476,7 +476,7 @@
                                     </button>
                                 </div>
                             </div>
-                            
+
                             <div class="glass rounded-[2rem] p-8 h-[300px] flex flex-col border-white/5">
                                 <h4 class="text-gray-500 font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-4">
                                     <i data-lucide="history" class="w-4 h-4"></i> Лог событий
@@ -484,7 +484,7 @@
                                 <div id="history-log" class="flex-1 overflow-y-auto custom-scrollbar space-y-1"></div>
                             </div>
                         </div>
-                        
+
                         <div class="lg:col-span-8 space-y-6">
                             <div class="glass rounded-[2rem] p-8 border-white/5">
                                 <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
@@ -498,7 +498,7 @@
                                         <div class="w-10 flex items-center justify-center text-cyan-400 opacity-50"><i data-lucide="hash" class="w-4 h-4"></i></div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                     <div class="flex gap-2">
                                         <input type="text" id="link-ads" onblur="saveProfileChanges()" placeholder="Google Ads" class="flex-1 url-input">
@@ -522,12 +522,12 @@
                                 <button id="test-tg-btn" onclick="testTelegram()" class="w-full mt-2 py-3 bg-blue-600/20 text-blue-400 border border-blue-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">
                                     <i data-lucide="send" class="w-3 h-3 inline mr-2"></i> Тест Telegram
                                 </button>
-                                
+
                                 <button id="manual-invoice-btn" onclick="sendManualInvoice()" class="w-full mt-2 py-3 bg-cyan-600/20 text-cyan-400 border border-cyan-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-600 hover:text-white transition-all">
                                     <i data-lucide="receipt" class="w-3 h-3 inline mr-2"></i> Отправить счет (Telegram)
                                 </button>
                             </div>
-                            
+
                             <div class="glass rounded-[2rem] p-8 border-white/5">
                                 <div class="flex justify-between items-center mb-6">
                                     <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest">
@@ -537,12 +537,12 @@
                                 </div>
                                 <div id="extra-services-list" class="space-y-2 mb-4"></div>
                                 <div id="extra-invoice-container" class="hidden mt-4 pt-4 border-t border-white/5 space-y-2">
-                                    <button id="extra-invoice-btn" onclick="sendExtraInvoice()" class="w-full py-3 bg-indigo-600/20 text-indigo-400 border border-indigo-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
+                                     <button id="extra-invoice-btn" onclick="sendExtraInvoice()" class="w-full py-3 bg-indigo-600/20 text-indigo-400 border border-indigo-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
                                         <i data-lucide="receipt" class="w-3 h-3 inline mr-2"></i> Счет на доп. услуги
-                                    </button>
-                                    <button onclick="confirmExtraPayment()" class="w-full py-3 bg-green-600/20 text-green-400 border border-green-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-green-600 hover:text-white transition-all">
+                                     </button>
+                                     <button onclick="confirmExtraPayment()" class="w-full py-3 bg-green-600/20 text-green-400 border border-green-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-green-600 hover:text-white transition-all">
                                         <i data-lucide="check-circle" class="w-3 h-3 inline mr-2"></i> Оплата получена
-                                    </button>
+                                     </button>
                                 </div>
                                 <div id="add-service-form" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-white/5 rounded-2xl border border-white/5 mt-4">
                                     <input type="text" id="new-service-name" placeholder="Название" class="text-xs">
@@ -550,7 +550,7 @@
                                     <button onclick="confirmAddService()" class="bg-cyan-500 text-black font-bold rounded-xl text-[10px] uppercase h-10">Добавить</button>
                                 </div>
                             </div>
-                            
+
                             <div class="glass rounded-[2rem] p-8 min-h-[300px] flex flex-col relative overflow-hidden border-white/5">
                                 <h4 class="text-cyan-400 font-bold flex items-center gap-3 uppercase text-[10px] tracking-widest mb-4">
                                     <i data-lucide="brain-circuit" class="w-5 h-5 animate-pulse"></i> Характеристика клиента (Психотип)
@@ -567,25 +567,26 @@
             </div>
         </div>
     </main>
-    
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz35_HlTAP3TalyFWnEAwENPSPrkO3Rr2N51SW_DYnzhcN2ion43g2XVbSC_kjFCtArLw/exec"; 
         
-        const API_URL = "https://europe-west3-aureliusclients.cloudfunctions.net/api";
         const FIREBASE_CONFIG = {
             apiKey: "AIzaSyDY3T5iVpsWCiJX6LaytEpTvAvaVcPWYZ0",
             authDomain: "aureliusclients.firebaseapp.com",
             projectId: "aureliusclients",
-            storageBucket: "aureliusclients.appspot.com",
+            storageBucket: "aureliusclients.firebasestorage.app",
             messagingSenderId: "1058461381786",
             appId: "1:1058461381786:web:42d4f9beaad6c43b579b23"
         };
-        
+
         let db, auth, currentClientId, clientsData = [];
         let currentSort = 'date';
-        
+
         function initPullToRefresh() {
             const container = document.getElementById('content-container');
             const indicator = document.getElementById('ptr-indicator');
@@ -606,14 +607,20 @@
                         const docRef = doc(db, 'artifacts', FIREBASE_CONFIG.projectId, 'public', 'data', 'clients_db', 'master');
                         const snap = await getDoc(docRef); 
                         if (snap.exists()) { clientsData = snap.data().clients || []; renderAllGrids(); updateAnalytics(); if (currentClientId) openClientProfile(currentClientId, true); }
-                        else setDoc(docRef, { clients: [] });
                     }
                     setTimeout(() => { indicator.style.height = '0px'; icon.classList.remove('spin'); }, 800);
                 } else indicator.style.height = '0px';
                 startY = 0; dist = 0;
             });
         }
-        
+
+        window.toggleMobileMenu = function() {
+            const menu = document.getElementById('mobile-menu');
+            const backdrop = document.getElementById('mobile-backdrop');
+            if (menu.classList.contains('-translate-x-full')) { menu.classList.remove('-translate-x-full'); backdrop.classList.remove('hidden'); }
+            else { menu.classList.add('-translate-x-full'); backdrop.classList.add('hidden'); }
+        };
+
         async function startSystem() {
             const app = initializeApp(FIREBASE_CONFIG);
             db = getFirestore(app);
@@ -629,7 +636,7 @@
             });
             initKeyboardShortcuts(); initBackground(); initPullToRefresh(); lucide.createIcons();
         }
-        
+
         function getStatusStyle(colorKey) {
             const map = {
                 cyan: { bg: 'rgba(0, 242, 255, 0.15)', border: '#00f2ff', glow: '#00f2ff44' },
@@ -639,7 +646,7 @@
             };
             return map[colorKey] || map.cyan;
         }
-        
+
         function getClientLogic(client) {
             const now = new Date(); const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const createdDate = new Date(parseInt(client.id)); const isNew = (now - createdDate) < 30 * 24 * 60 * 60 * 1000;
@@ -651,13 +658,16 @@
             
             // Логика дат: если абонентка (recurring) выключена - не считаем долг
             if (client.status !== 'Пауза' && client.date) {
-                const isRecurring = client.recurring !== false; // По умолчанию true
+                const inputDate = new Date(client.date); const compareDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
+                info.dueDateObj = compareDate;
+                
+                // Если recurring включен (по умолчанию true для старых)
+                const isRecurring = client.recurring !== false; 
+                
                 if (isRecurring) {
-                    const inputDate = new Date(client.date); const compareDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
-                    info.dueDateObj = compareDate;
                     info.nextDateStr = compareDate.toLocaleDateString('ru-RU');
                     const diffDays = Math.floor((today - compareDate) / (1000 * 60 * 60 * 24));
-                    if (diffDays > 5) { info.label = \`ДОЛГ: ${diffDays} ДН.\`; info.color = 'danger'; info.overdue = true; info.churnRisk = true; info.priority = 0; }
+                    if (diffDays > 5) { info.label = `ДОЛГ: ${diffDays} ДН.`; info.color = 'danger'; info.overdue = true; info.churnRisk = true; info.priority = 0; }
                     else if (diffDays >= 0 || Math.ceil((compareDate - today) / (1000 * 60 * 60 * 24)) <= 5) { info.label = 'ОЖИДАНИЕ'; info.color = 'warning'; info.priority = 1; }
                 } else {
                     info.nextDateStr = 'Проект'; // Если разовый проект
@@ -665,12 +675,69 @@
                     info.color = 'paused';
                 }
             }
-        
             if (amt > 1500) info.cohort = 'vip'; else if (isNew) info.cohort = 'new';
             if (client.manualCohort && client.manualCohort !== 'auto') info.cohort = client.manualCohort;
             return info;
         }
-        
+
+        const COHORT_MAP = {
+            new: { label: 'Новый', color: 'bg-blue-500/20 text-blue-400', weight: 3 },
+            loyal: { label: 'Лояльный', color: 'bg-green-500/20 text-green-400', weight: 2 },
+            problematic: { label: 'Проблемный', color: 'bg-red-500/20 text-red-400', weight: 4 },
+            vip: { label: 'VIP (High)', color: 'bg-purple-500/20 text-purple-400', weight: 1 }
+        };
+
+        function initKeyboardShortcuts() {
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') switchView('clients');
+                if (document.getElementById('details-view').classList.contains('active')) {
+                    if (e.key === 'ArrowRight') navigateClient(1); if (e.key === 'ArrowLeft') navigateClient(-1);
+                }
+            });
+        }
+
+        window.setSort = function(type) {
+            currentSort = type;
+            document.querySelectorAll('.sort-chip').forEach(c => c.classList.remove('active'));
+            document.getElementById(`btn-sort-${type}`).classList.add('active');
+            renderAllGrids();
+        }
+
+        window.renderAllGrids = function() {
+            const sortData = (list) => {
+                const cloned = [...list];
+                if (currentSort === 'amount') return cloned.sort((a, b) => (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0));
+                else if (currentSort === 'date') return cloned.sort((a, b) => (a.date ? new Date(a.date).getTime() : Infinity) - (b.date ? new Date(b.date).getTime() : Infinity));
+                else if (currentSort === 'cohort') return cloned.sort((a, b) => (COHORT_MAP[getClientLogic(a).cohort]?.weight || 10) - (COHORT_MAP[getClientLogic(b).cohort]?.weight || 10));
+                return cloned.sort((a, b) => b.id - a.id);
+            };
+            renderClientsGrid(sortData(clientsData.filter(c => !c.archived)), 'clients-grid', false);
+            renderClientsGrid(sortData(clientsData.filter(c => c.archived)), 'archive-grid', true);
+        };
+
+        window.renderClientsGrid = function(data, gridId, isArchive) {
+            const grid = document.getElementById(gridId); if (!grid) return;
+            grid.innerHTML = data.length === 0 ? `<div class="col-span-full py-20 text-center opacity-20 uppercase font-bold text-[10px]">Пусто</div>` : 
+            data.map(c => {
+                const logic = getClientLogic(c); const style = getStatusStyle(logic.color); const cohort = COHORT_MAP[logic.cohort];
+                return `
+                <div onclick="openClientProfile('${c.id}')" class="card-glow glass rounded-[2.5rem] p-6 pt-12 border cursor-pointer relative animate-fade-in ${logic.overdue ? 'overdue-pulse' : ''}" style="background: linear-gradient(180deg, ${style.bg} 0%, rgba(10, 10, 15, 0.98) 100%); border-color: ${style.border}88; box-shadow: 0 10px 30px -15px ${style.glow};">
+                    ${logic.churnRisk && !isArchive ? `<div class="risk-alert">РИСК УХОДА</div>` : ''}
+                    <div class="absolute top-4 right-4 flex gap-1.5 z-10">
+                        ${!isArchive ? `<button onclick="event.stopPropagation(); quickPayment('${c.id}')" class="quick-action-btn"><i data-lucide="check" class="w-3.5 h-3.5"></i></button><button onclick="event.stopPropagation(); quickPause('${c.id}')" class="quick-action-btn"><i data-lucide="pause" class="w-3.5 h-3.5"></i></button><button onclick="event.stopPropagation(); showDeleteModal('${c.id}', false)" class="quick-action-btn"><i data-lucide="archive" class="w-3.5 h-3.5"></i></button>` : `<button onclick="event.stopPropagation(); restoreClient('${c.id}')" class="quick-action-btn"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i></button><button onclick="event.stopPropagation(); showDeleteModal('${c.id}', true)" class="quick-action-btn"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-500"></i></button>`}
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="relative mb-6 mt-2"><img src="${c.img || 'https://ui-avatars.com/api/?name=User&background=333&color=fff'}" class="w-24 h-24 rounded-full border-2 border-white/20 object-cover shadow-2xl"></div>
+                        <h4 class="text-white font-bold text-base text-center truncate w-full mb-0.5">${c.name}</h4>
+                        <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-2 block truncate w-full text-center opacity-80">${c.role || '—'}</span>
+                        <div class="cohort-badge ${cohort.color} mb-3">${cohort.label}</div>
+                        <div class="flex flex-col items-center gap-1"><span class="text-[9px] font-bold tracking-widest uppercase" style="color: ${style.border}">${logic.label}</span>${logic.nextDateStr !== '—' && logic.nextDateStr !== 'Проект' ? `<span class="text-[8px] text-white opacity-50 font-extrabold uppercase tracking-widest">След: ${logic.nextDateStr}</span>` : ''}</div>
+                        ${c.amount ? `<span class="text-[9px] text-gray-400 font-bold mt-2 opacity-60">$${c.amount} / мес</span>` : ''}
+                    </div>
+                </div>`;
+            }).join(''); lucide.createIcons();
+        };
+
         window.updateAnalytics = function() {
             const now = new Date(); const currentMonthYear = now.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
             let totalActualReceived = 0, totalOverdue = 0, forecastRevenue = 0; 
@@ -687,12 +754,12 @@
                             if(dateParts.length === 3) {
                                 const pDate = new Date(dateParts[2], dateParts[1]-1, dateParts[0]);
                                 const mKey = pDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
-                                const ext = h.text.match(/\\$(\\d+)/); const val = ext ? parseFloat(ext[1]) : amt;
+                                const ext = h.text.match(/\$(\d+)/); const val = ext ? parseFloat(ext[1]) : amt;
                                 
                                 clientFactSum += val; 
                                 totalActualReceived += val; 
                                 flowHistory[mKey] = (flowHistory[mKey] || 0) + val;
-                                
+
                                 // Разделение на Ведение и Допы
                                 if (h.text.includes('(Доп)')) {
                                     extraTotal += val;
@@ -709,26 +776,26 @@
                     if (logic.dueDateObj && logic.dueDateObj.toLocaleString('ru-RU', { month: 'long', year: 'numeric' }) === currentMonthYear && c.recurring !== false) forecastRevenue += amt;
                 }
             });
-            
-            document.getElementById('stat-total-revenue').innerText = \`$${totalActualReceived.toLocaleString()}\`;
+
+            document.getElementById('stat-total-revenue').innerText = `$${totalActualReceived.toLocaleString()}`;
             // Вставляем разбивку
             const breakdownEl = document.getElementById('revenue-breakdown');
             if (breakdownEl) {
-                breakdownEl.innerHTML = \`
+                breakdownEl.innerHTML = `
                     <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-cyan-400"></div> <span>Ведение: $${retainerTotal.toLocaleString()}</span></div>
                     <div class="flex items-center gap-2 text-purple-400"><div class="w-2 h-2 rounded-full bg-purple-400"></div> <span>Доп. услуги: $${extraTotal.toLocaleString()}</span></div>
-                \`;
+                `;
             }
-            
-            document.getElementById('stat-forecast-revenue').innerText = \`$${forecastRevenue.toLocaleString()}\`;
-            document.getElementById('stat-overdue-revenue').innerText = \`$${totalOverdue.toLocaleString()}\`;
+
+            document.getElementById('stat-forecast-revenue').innerText = `$${forecastRevenue.toLocaleString()}`;
+            document.getElementById('stat-overdue-revenue').innerText = `$${totalOverdue.toLocaleString()}`;
             document.getElementById('stat-active-count').innerText = clientsData.filter(c => !c.archived && c.status === 'Активен').length;
             const ltvCont = document.getElementById('ltv-stats-container');
-            if(ltvCont) ltvCont.innerHTML = topClients.sort((a,b) => b.sum - a.sum).slice(0, 5).map(item => \`<div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5"><span class="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[120px]">${item.name}</span><span class="text-cyan-400 font-bold">$${item.sum.toLocaleString()}</span></div>\`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase">Нет оплат</p>';
+            if(ltvCont) ltvCont.innerHTML = topClients.sort((a,b) => b.sum - a.sum).slice(0, 5).map(item => `<div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5"><span class="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[120px]">${item.name}</span><span class="text-cyan-400 font-bold">$${item.sum.toLocaleString()}</span></div>`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase">Нет оплат</p>';
             const monthCont = document.getElementById('monthly-stats-container');
             if(monthCont) {
                 const sorted = Object.keys(flowHistory).sort((a,b) => { const p = (s) => new Date(s.split(' ')[1], ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'].indexOf(s.split(' ')[0])); return p(b) - p(a); });
-                monthCont.innerHTML = sorted.map(m => \`<div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl"><span class="text-[11px] text-gray-400 font-bold uppercase">${m}</span><span class="text-white font-bold">$${flowHistory[m].toLocaleString()}</span></div>\`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase text-center">История пуста</p>';
+                monthCont.innerHTML = sorted.map(m => `<div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl"><span class="text-[11px] text-gray-400 font-bold uppercase">${m}</span><span class="text-white font-bold">$${flowHistory[m].toLocaleString()}</span></div>`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase text-center">История пуста</p>';
             }
         };
 
@@ -736,7 +803,7 @@
             currentClientId = id; const c = clientsData.find(x => x.id === id); if (!c) return;
             const logic = getClientLogic(c); const style = getStatusStyle(logic.color);
             const prof = document.getElementById('profile-card-container');
-            prof.style.background = \`linear-gradient(180deg, ${style.bg} 0%, rgba(10, 10, 15, 0.98) 100%)\`; prof.style.borderColor = \`${style.border}77\`; prof.style.boxShadow = \`0 10px 40px -10px ${style.glow}\`;
+            prof.style.background = `linear-gradient(180deg, ${style.bg} 0%, rgba(10, 10, 15, 0.98) 100%)`; prof.style.borderColor = `${style.border}77`; prof.style.boxShadow = `0 10px 40px -10px ${style.glow}`;
             document.getElementById('detail-name-input').value = c.name || ""; document.getElementById('detail-role-input').value = c.role || "";
             document.getElementById('detail-img').src = c.img || 'https://ui-avatars.com/api/?name=User&background=333&color=fff';
             document.getElementById('field-amount').value = c.amount || ""; document.getElementById('field-date').value = c.date || "";
@@ -747,10 +814,10 @@
             // Toggle Logic
             const toggle = document.getElementById('recurring-toggle');
             if (c.recurring === false) toggle.classList.remove('active'); else toggle.classList.add('active');
-            
-            const count = document.getElementById('payment-countdown'); count.innerText = logic.label; count.style.backgroundColor = \`${style.border}15\`; count.style.color = style.border; count.style.borderColor = \`${style.border}33\`;
-            const nxt = document.getElementById('next-payment-display'); nxt.innerText = logic.nextDateStr !== '—' && logic.nextDateStr !== 'Проект' ? \`След. платеж: ${logic.nextDateStr}\` : (logic.nextDateStr === 'Проект' ? 'Проектная работа' : 'Платеж не запланирован'); nxt.style.color = style.border;
-            const log = document.getElementById('history-log'); log.innerHTML = (c.history || []).map((h, i) => \`<div class="history-item"><div><span class="text-gray-600 mr-2 font-mono">${h.date}</span><span class="text-gray-300">${h.text}</span></div><button onclick="deleteHistoryItem(${i})" class="text-red-500/30 hover:text-red-500 px-2 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>\`).join('') || '<p class="text-[9px] text-gray-700 uppercase italic p-4">История пуста</p>';
+
+            const count = document.getElementById('payment-countdown'); count.innerText = logic.label; count.style.backgroundColor = `${style.border}15`; count.style.color = style.border; count.style.borderColor = `${style.border}33`;
+            const nxt = document.getElementById('next-payment-display'); nxt.innerText = logic.nextDateStr !== '—' && logic.nextDateStr !== 'Проект' ? `След. платеж: ${logic.nextDateStr}` : (logic.nextDateStr === 'Проект' ? 'Проектная работа' : 'Платеж не запланирован'); nxt.style.color = style.border;
+            const log = document.getElementById('history-log'); log.innerHTML = (c.history || []).map((h, i) => `<div class="history-item"><div><span class="text-gray-600 mr-2 font-mono">${h.date}</span><span class="text-gray-300">${h.text}</span></div><button onclick="deleteHistoryItem(${i})" class="text-red-500/30 hover:text-red-500 px-2 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>`).join('') || '<p class="text-[9px] text-gray-700 uppercase italic p-4">История пуста</p>';
             renderExtraServices(c); if (!silent) switchView('details'); lucide.createIcons();
         };
 
@@ -761,37 +828,44 @@
             document.getElementById('recurring-toggle').classList.toggle('active');
             await saveProfileChanges(); openClientProfile(currentClientId, true);
         };
-        
+
         window.deleteHistoryItem = async (index) => { const c = clientsData.find(x => x.id === currentClientId); if (c && c.history) { c.history.splice(index, 1); await syncDataWithFirestore(); openClientProfile(currentClientId, true); } };
         window.quickPayment = async (id) => { currentClientId = id; await confirmPayment(); };
-        window.quickPause = async (id) => { const c = clientsData.find(x => x.id === id); if (!c) return; c.status = 'Пауза'; addHistory(c, \`Статус изменен на Пауза\`); await syncDataWithFirestore(); };
-        
+        window.quickPause = async (id) => { const c = clientsData.find(x => x.id === id); if (!c) return; c.status = 'Пауза'; addHistory(c, `Статус изменен на Пауза`); await syncDataWithFirestore(); };
+
         window.saveProfileChanges = async () => {
             const c = clientsData.find(x => x.id === currentClientId); if (!c) return;
             c.name = document.getElementById('detail-name-input').value || ""; c.role = document.getElementById('detail-role-input').value || "";
             c.amount = document.getElementById('field-amount').value || ""; c.date = document.getElementById('field-date').value || "";
             c.status = document.getElementById('detail-status-select').value || 'Активен'; c.manualCohort = document.getElementById('detail-cohort-select').value || 'auto';
-            c.ai_analysis = document.getElementById('detail-ai-analysis').value || ""; c.adsId = document.getElementById('field-ads-id').value.replace(/\\D/g, '') || "";
+            c.ai_analysis = document.getElementById('detail-ai-analysis').value || ""; c.adsId = document.getElementById('field-ads-id').value.replace(/\D/g, '') || "";
             c.links = { ads: document.getElementById('link-ads').value || "", ga: document.getElementById('link-ga').value || "", gtm: document.getElementById('link-gtm').value || "", site: document.getElementById('link-site').value || "" };
             
+            // Если абонентка выключена, мы можем не слать сигнал планировщику (или слать с пустым date)
+            if (c.date && c.amount && c.recurring !== false) {
+                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'syncPayment', clientId: c.id, clientName: c.name, amount: c.amount, targetDate: c.date, adsId: c.adsId }) });
+            }
+
             const ind = document.getElementById('autosave-indicator'); ind.classList.add('active');
             await syncDataWithFirestore(); setTimeout(() => ind.classList.remove('active'), 2000);
         };
-        
+
         window.confirmPayment = async () => {
             const client = clientsData.find(c => c.id === currentClientId); if (!client) return;
             const amt = client.amount || 0; 
             const isRecurring = client.recurring !== false; // По умолчанию true
-            let logMsg = \`Платеж получен: $${amt}.\`;
-            let nStr = client.date;
             
+            let logMsg = `Платеж получен: $${amt}.`;
+            let nStr = client.date;
+
             if (isRecurring) {
-                // ЛОГИКА ЯКОРНОГО ДНЯ (ANCHOR DAY)
+                // ЛОГИКА ЯКІРНОГО ДНЯ (ANCHOR DAY)
                 // Берем сохраненную дату или создаем новую
                 let anchorDate = client.date ? new Date(client.date) : new Date();
                 
                 // Добавляем месяц
                 anchorDate.setMonth(anchorDate.getMonth() + 1);
+                
                 // Если клиент сильно просрочил, подтягиваем дату к ближайшему будущему
                 let now = new Date();
                 now.setHours(0,0,0,0);
@@ -801,174 +875,116 @@
                 
                 nStr = anchorDate.toISOString().split('T')[0];
                 client.date = nStr;
-                logMsg += \` След. оплата: ${nStr}\`;
+                logMsg += ` След. оплата: ${nStr}`;
                 
+                // Продлеваем очередь авто-счетов
+                fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'syncPayment', clientId: client.id, clientName: client.name, amount: client.amount, targetDate: nStr, adsId: client.adsId }) });
             } else {
-                 logMsg += \` (Разовый проект)\`;
+                logMsg += ` (Разовый проект)`;
             }
+
             client.status = 'Активен';
             addHistory(client, logMsg);
-            await syncDataWithFirestore(); 
-            openClientProfile(currentClientId, true);
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'notifyManualPayment', clientName: client.name, amount: amt })
-                });
-            } catch (e) {
-                console.error("Error notifying about manual payment:", e);
-            }
+            
+            await syncDataWithFirestore(); openClientProfile(currentClientId, true);
+            try { fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'notifyManualPayment', clientName: client.name, amount: amt }) }); } catch (e) {}
         };
-        
+
         window.testTelegram = async () => {
-            const c = clientsData.find(x => x.id === currentClientId);
-            if (!c) return alert("Выберите клиента");
-            
-            const btn = document.getElementById('test-tg-btn');
-            const orig = btn.innerHTML;
-            btn.innerHTML = \`<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-2"></i> Отправка...\`;
-            lucide.createIcons();
-            
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'test', message: \`🔔 <b>Тест</b>\\nКлиент: ${c.name}\\nAds ID: ${c.adsId}\\nСумма: $${c.amount}\` })
-                });
-                if (response.ok) {
-                    alert("Сигнал отправлен!");
-                } else {
-                    alert("Ошибка отправки. " + await response.text());
-                }
-            } catch (e) {
-                console.error("Error sending test message:", e);
-                alert("Ошибка сети при отправке. Проверьте консоль.");
-            } finally {
-                btn.innerHTML = orig;
-                lucide.createIcons();
-            }
+            const c = clientsData.find(x => x.id === currentClientId); if (!c) return alert("Выберите клиента");
+            const btn = document.getElementById('test-tg-btn'); const orig = btn.innerHTML; btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-2"></i> Отправка...`; lucide.createIcons();
+            try { await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'test', message: `🔔 <b>Тест</b>\nКлиент: ${c.name}\nAds ID: ${c.adsId}\nСумма: $${c.amount}` }) }); setTimeout(() => alert("Сигнал отправлен!"), 500); } catch (e) {} 
+            finally { btn.innerHTML = orig; lucide.createIcons(); }
         };
 
         window.sendManualInvoice = async () => {
-            const c = clientsData.find(x => x.id === currentClientId);
-            if (!c) return alert("Выберите клиента");
-
-            const btn = document.getElementById('manual-invoice-btn');
-            const orig = btn.innerHTML;
-            btn.innerHTML = \`<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-2"></i> Отправка...\`;
-            lucide.createIcons();
-
-            try {
-                 const payload = { 
-                    action: 'manualInvoice', 
-                    clientName: c.name, 
-                    amount: c.amount, 
-                    clientId: c.id, 
-                    adsId: c.adsId 
-                };
-
-                const response = await fetch(API_URL, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload) 
-                });
-                
-                if(response.ok) {
-                    addHistory(c, `Счет отправлен: $${c.amount}`);
-                    await syncDataWithFirestore();
-                    openClientProfile(c.id, true);
-                    alert("Счет отправлен!");
-                } else {
-                    throw new Error('Server responded with an error: ' + response.statusText);
-                }
-
-            } catch (e) {
-                console.error("Error sending manual invoice:", e);
-                alert("Ошибка отправки счета. Проверьте консоль.");
-            } finally {
-                btn.innerHTML = orig;
-                lucide.createIcons();
-            }
+            const c = clientsData.find(x => x.id === currentClientId); if (!c) return alert("Выберите клиента");
+            const btn = document.getElementById('manual-invoice-btn'); const orig = btn.innerHTML; btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-2"></i> Отправка...`; lucide.createIcons();
+            try { await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'manualInvoice', clientName: c.name, amount: c.amount, clientId: c.id, adsId: c.adsId }) }); setTimeout(() => alert("Счет отправлен!"), 500); } catch (e) {} 
+            finally { btn.innerHTML = orig; lucide.createIcons(); }
         };
-        
+
         window.sendExtraInvoice = async () => {
-            const c = clientsData.find(x => x.id === currentClientId); 
-            if (!c || !c.extra_services || c.extra_services.length === 0) {
-                 return alert("Нет услуг для оплаты");
-            }
-            
+            const c = clientsData.find(x => x.id === currentClientId); if (!c || !c.extra_services || c.extra_services.length === 0) return alert("Нет услуг для оплаты");
             const total = c.extra_services.reduce((sum, s) => sum + (parseFloat(s.amount)||0), 0);
-            const btn = document.getElementById('extra-invoice-btn'); 
-            const orig = btn.innerHTML;
-            btn.innerHTML = \`<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-2"></i> Отправка...\`;
-            lucide.createIcons();
+            const btn = document.getElementById('extra-invoice-btn'); const orig = btn.innerHTML; btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-2"></i> Отправка...`; lucide.createIcons();
             
-            try {
-                const extendedPayload = {
-                    action: 'extraInvoice',
-                    invoiceType: 'extra',
-                    clientName: c.name + " (Доп. услуги)",
-                    amount: total,
-                    clientId: c.id,
-                    adsId: c.adsId,
-                    executor: 'AureliusMarketingAI',
-                    servicesList: c.extra_services.map(s => s.name).join(', ')
-                };
+            const extendedPayload = {
+                action: 'manualInvoice',
+                invoiceType: 'extra',
+                clientName: c.name + " (Доп. услуги)",
+                amount: total,
+                clientId: c.id,
+                adsId: c.adsId,
+                executor: 'AureliusMarketingAI',
+                servicesList: c.extra_services.map(s => s.name).join(', ')
+            };
 
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(extendedPayload)
-                });
-                
-                if (response.ok) {
-                    addHistory(c, `Счет на доп. услуги отправлен: $${total}`);
-                    await syncDataWithFirestore();
-                    alert(\`Счет на $${total} отправлен!\`);
-                } else {
-                    throw new Error('Server responded with an error: ' + response.statusText);
-                }
-
-            } catch (e) {
-                console.error("Error sending extra invoice:", e);
-                alert("Ошибка отправки счета на доп. услуги. Проверьте консоль.");
-            } finally {
-                btn.innerHTML = orig;
-                lucide.createIcons();
-            }
+            try { 
+                await fetch(GOOGLE_SCRIPT_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify(extendedPayload) 
+                }); 
+                setTimeout(() => alert(`Счет на $${total} отправлен!`), 500); 
+            } catch (e) {} 
+            finally { btn.innerHTML = orig; lucide.createIcons(); }
         };
 
         window.confirmExtraPayment = async () => {
             const c = clientsData.find(x => x.id === currentClientId); if (!c || !c.extra_services || c.extra_services.length === 0) return;
             const total = c.extra_services.reduce((sum, s) => sum + (parseFloat(s.amount)||0), 0);
+            
             const serviceNames = c.extra_services.map(s => s.name).join(', ');
-            addHistory(c, \`Платеж получен (Доп): $${total}. Услуги: ${serviceNames}\`);
+            addHistory(c, `Платеж получен (Доп): $${total}. Услуги: ${serviceNames}`);
             
             c.extra_services = [];
             
             await saveProfileChanges();
             renderExtraServices(c);
             openClientProfile(currentClientId, true); 
-
-            try { 
-                await fetch(API_URL, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'notifyManualPayment', clientName: c.name + " (Доп. услуги)", amount: total }) 
-                });
-            } catch (e) {
-                console.error("Error notifying about extra payment:", e);
-            }
+            
+            try { fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'notifyManualPayment', clientName: c.name + " (Доп. услуги)", amount: total }) }); } catch (e) {}
         };
-        
-        window.handleStatusChange = async (val) => { const c = clientsData.find(x => x.id === currentClientId); if (c) { c.status = val; addHistory(c, \`Статус: ${val}\`); await saveProfileChanges(); openClientProfile(currentClientId, true); renderAllGrids(); } };
+
+        window.handleStatusChange = async (val) => { const c = clientsData.find(x => x.id === currentClientId); if (c) { c.status = val; addHistory(c, `Статус: ${val}`); await saveProfileChanges(); openClientProfile(currentClientId, true); renderAllGrids(); } };
         window.handleCohortOverride = async (val) => { const c = clientsData.find(x => x.id === currentClientId); if(c) { c.manualCohort = val; await saveProfileChanges(); } };
         function addHistory(c, a) { if (!c.history) c.history = []; c.history.unshift({ date: new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }), text: a }); c.history = c.history.slice(0, 30); }
-        async function syncDataWithFirestore() { if (!auth.currentUser) return; const docRef = doc(db, 'artifacts', 'aureliusclients', 'public', 'data', 'clients_db', 'master'); await setDoc(docRef, { clients: clientsData }); }
+        async function syncDataWithFirestore() { if (!auth.currentUser) return; const docRef = doc(db, 'artifacts', FIREBASE_CONFIG.projectId, 'public', 'data', 'clients_db', 'master'); await setDoc(docRef, { clients: clientsData }); }
         window.switchView = (id) => { document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active')); document.getElementById(id + '-view')?.classList.add('active'); document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active')); document.getElementById('nav-' + (id === 'details' ? 'clients' : id))?.classList.add('active'); lucide.createIcons(); };
         window.navigateClient = (dir) => { const c = clientsData.find(x => x.id === currentClientId); if (!c) return; const list = clientsData.filter(x => x.archived === c.archived); const idx = list.findIndex(x => x.id === currentClientId); if (list[idx + dir]) openClientProfile(list[idx + dir].id); };
         
+        window.renderExtraServices = (c) => { 
+            const l = document.getElementById('extra-services-list'); 
+            const invCont = document.getElementById('extra-invoice-container');
+            const invBtn = document.getElementById('extra-invoice-btn');
+            
+            if (!c.extra_services || c.extra_services.length === 0) { 
+                l.innerHTML = ''; 
+                invCont.classList.add('hidden');
+                return; 
+            } 
+            
+            const total = c.extra_services.reduce((sum, s) => sum + (parseFloat(s.amount)||0), 0);
+            invCont.classList.remove('hidden');
+            invBtn.innerHTML = `<i data-lucide="receipt" class="w-3 h-3 inline mr-2"></i> Счет на доп. услуги ($${total})`;
+
+            l.innerHTML = c.extra_services.map(s => `
+                <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 group">
+                    <span class="text-white font-bold text-xs">${s.name}</span>
+                    <div class="flex items-center gap-4">
+                        <span class="text-cyan-400 font-bold text-xs">$${s.amount}</span>
+                        <button onclick="deleteService('${s.id}')" class="text-red-500/30 hover:text-red-500 transition-colors opacity-100"><i data-lucide="x" class="w-3 h-3"></i></button>
+                    </div>
+                </div>`).join(''); 
+            lucide.createIcons(); 
+        };
+        
+        window.addExtraService = () => document.getElementById('add-service-form').classList.toggle('hidden');
+        window.confirmAddService = async () => { const n = document.getElementById('new-service-name').value; const a = document.getElementById('new-service-amount').value; if (!n || !a) return; const c = clientsData.find(x => x.id === currentClientId); if (c) { if (!c.extra_services) c.extra_services = []; c.extra_services.push({ id: Date.now().toString(), name: n, amount: parseFloat(a) }); addHistory(c, `Доп: ${n} ($${a})`); await saveProfileChanges(); document.getElementById('add-service-form').classList.add('hidden'); renderExtraServices(c); } };
+        window.deleteService = async (id) => { const c = clientsData.find(x => x.id === currentClientId); if (c) { c.extra_services = c.extra_services.filter(s => s.id !== id); await saveProfileChanges(); renderExtraServices(c); } };
+        window.addNewClient = async () => { const id = Date.now().toString(); clientsData.push({ id, name: "Новый контакт", role: "", status: "Активен", archived: false, history: [], links: { ads: "", ga: "", gtm: "", site: "" }, extra_services: [], ai_analysis: "", manualCohort: "auto", amount: "", date: "", adsId: "", recurring: true }); await syncDataWithFirestore(); openClientProfile(id); };
+        window.restoreClient = async (id) => { const c = clientsData.find(x => x.id === id); if(c) { c.archived = false; addHistory(c, 'Восстановлен'); await syncDataWithFirestore(); } };
         window.showDeleteModal = (id, isPerm) => { const m = document.getElementById('delete-modal'); const b = document.getElementById('confirm-delete-btn'); m.classList.remove('hidden'); if (isPerm) b.onclick = async () => { clientsData = clientsData.filter(c => c.id !== id); await syncDataWithFirestore(); m.classList.add('hidden'); }; else b.onclick = async () => { const c = clientsData.find(x => x.id === id); if(c) { c.archived = true; addHistory(c, 'В архив'); await syncDataWithFirestore(); m.classList.add('hidden'); } }; };
         window.closeDeleteModal = () => document.getElementById('delete-modal').classList.add('hidden');
         window.handlePhotoUpload = (input) => { const f = input.files[0]; if (!f) return; const r = new FileReader(); r.onload = async (e) => { const c = clientsData.find(x => x.id === currentClientId); if (c) { c.img = e.target.result; document.getElementById('detail-img').src = c.img; await saveProfileChanges(); } }; r.readAsDataURL(f); };
@@ -977,9 +993,7 @@
         function initBackground() { const canvas = document.getElementById('bg-canvas'); const ctx = canvas.getContext('2d'); canvas.width = window.innerWidth; canvas.height = window.innerHeight; let parts = []; for(let i=0; i<30; i++) parts.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.2, vy: (Math.random()-0.5)*0.2 });
             function animate() { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "#00f2ff"; ctx.globalAlpha = 0.05; parts.forEach(p => { p.x += p.vx; p.y += p.vy; if(p.x<0 || p.x>canvas.width) p.vx*=-1; if(p.y<0 || p.y>canvas.height) p.vy*=-1; ctx.beginPath(); ctx.arc(p.x, p.y, 1, 0, Math.PI*2); ctx.fill(); }); requestAnimationFrame(animate); } animate();
         }
-        
         startSystem();
-
     </script>
 </body>
 </html>
