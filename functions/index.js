@@ -3,6 +3,7 @@ const { onSchedule } = require("firebase-functions/v2/scheduler");
 const admin = require("firebase-admin");
 const axios = require("axios");
 
+// v2.0.1 - Fixed manual payment clearing
 admin.initializeApp();
 const db = admin.firestore();
 
