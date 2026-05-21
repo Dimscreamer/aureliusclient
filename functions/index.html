@@ -17,6 +17,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
@@ -364,8 +365,29 @@
                             <h3 id="stat-overdue-revenue" class="text-3xl font-bold text-red-500">$0</h3>
                         </div>
                         <div class="stat-card">
-                            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Активные клиенты</span>
-                            <h3 id="stat-active-count" class="text-3xl font-bold text-indigo-400">0</h3>
+                            <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Upsell Efficiency</span>
+                            <div class="flex items-baseline gap-2 mb-1">
+                                <h3 id="stat-upsell-percent" class="text-3xl font-bold text-white">0%</h3>
+                                <span class="text-[9px] text-gray-400 font-bold uppercase tracking-widest">доля допов</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-white/5 rounded-full overflow-hidden flex my-2 border border-white/5">
+                                <div id="bar-retainer" class="bg-cyan-400 h-full transition-all duration-500" style="width: 100%"></div>
+                                <div id="bar-upsell" class="bg-purple-500 h-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <span id="stat-upsell-extra-sum" class="text-[9px] text-purple-400 font-bold uppercase tracking-widest block mt-1">$0 за доп. услуги в этом месяце</span>
+                        </div>
+                    </div>
+
+                    <!-- Risk Management Insight -->
+                    <div id="risk-insight-container" class="glass rounded-3xl p-5 border border-white/5 flex items-center justify-between transition-all duration-300">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10" id="risk-insight-icon-container">
+                                <i data-lucide="shield" class="w-5 h-5 text-gray-400"></i>
+                            </div>
+                            <div>
+                                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest block mb-0.5">Анализ риска концентрации доходов</span>
+                                <span id="risk-insight-text" class="text-xs font-bold uppercase tracking-wider text-white">Портфель анализируется...</span>
+                            </div>
                         </div>
                     </div>
 
@@ -387,6 +409,16 @@
                                 <i data-lucide="pie-chart" class="w-4 h-4 text-cyan-400"></i> Когорты
                             </h4>
                             <div id="cohort-breakdown-container" class="space-y-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- Revenue Trend Chart -->
+                    <div class="glass rounded-3xl p-8 border border-white/5">
+                        <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-cyan-400"></i> 📈 Динамика выручки
+                        </h4>
+                        <div class="h-[300px] w-full relative">
+                            <canvas id="revenue-trend-chart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -735,31 +767,48 @@
 
         window.updateAnalytics = function() {
             const now = new Date(); const currentMonthYear = now.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
             let totalActualReceived = 0, totalOverdue = 0, forecastRevenue = 0; 
             let retainerTotal = 0, extraTotal = 0;
+            let extraRevenueThisMonth = 0;
+            let retainerRevenueThisMonth = 0;
             const flowHistory = {}; const topClients = [];
             
             clientsData.forEach(c => {
                 const logic = getClientLogic(c); const amt = parseFloat(c.amount) || 0; let clientFactSum = 0;
                 if (c.history) {
                     c.history.forEach(h => {
-                        // Проверяем ключевые фразы
-                        if (h.text.includes('Платеж получен')) {
-                            const dateParts = h.date.split(',')[0].split('.');
-                            if(dateParts.length === 3) {
-                                const pDate = new Date(dateParts[2], dateParts[1]-1, dateParts[0]);
-                                const mKey = pDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
-                                const ext = h.text.match(/\$(\d+)/); const val = ext ? parseFloat(ext[1]) : amt;
-                                
+                        const dateParts = h.date.split(',')[0].split('.');
+                        if(dateParts.length === 3) {
+                            const pDate = new Date(parseInt(dateParts[2]), parseInt(dateParts[1])-1, parseInt(dateParts[0]));
+                            const mKey = pDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+                            
+                            // Улучшенное регулярное выражение для поиска $ и цифр после него
+                            const ext = h.text.match(/\$(\d+(?:\.\d+)?)/); 
+                            const val = ext ? parseFloat(ext[1]) : amt;
+
+                            // Проверяем ключевые фразы
+                            if (h.text.includes('Платеж получен')) {
                                 clientFactSum += val; 
                                 totalActualReceived += val; 
                                 flowHistory[mKey] = (flowHistory[mKey] || 0) + val;
 
-                                // Разделение на Ведение и Допы
+                                // Разделение на Ведение и Допы (за все время)
                                 if (h.text.includes('(Доп)')) {
                                     extraTotal += val;
                                 } else {
                                     retainerTotal += val;
+                                }
+                            }
+
+                            // Разделение на Ведение и Допы (за текущий календарный месяц)
+                            if (pDate.getMonth() === currentMonth && pDate.getFullYear() === currentYear) {
+                                if (h.text.includes('(Доп)')) {
+                                    extraRevenueThisMonth += val;
+                                } else if (h.text.includes('Платеж получен')) {
+                                    retainerRevenueThisMonth += val;
                                 }
                             }
                         }
@@ -784,7 +833,83 @@
 
             document.getElementById('stat-forecast-revenue').innerText = `$${forecastRevenue.toLocaleString()}`;
             document.getElementById('stat-overdue-revenue').innerText = `$${totalOverdue.toLocaleString()}`;
-            document.getElementById('stat-active-count').innerText = clientsData.filter(c => !c.archived && c.status === 'Активен').length;
+            
+            const activeCountEl = document.getElementById('stat-active-count');
+            if (activeCountEl) {
+                activeCountEl.innerText = clientsData.filter(c => !c.archived && c.status === 'Активен').length;
+            }
+
+            // UPSELL POWER DISPLAY
+            const monthlyTotalRevenue = retainerRevenueThisMonth + extraRevenueThisMonth;
+            const upsellPower = monthlyTotalRevenue > 0 ? (extraRevenueThisMonth / monthlyTotalRevenue) * 100 : 0;
+            
+            const upsellPercentEl = document.getElementById('stat-upsell-percent');
+            if (upsellPercentEl) upsellPercentEl.innerText = `${Math.round(upsellPower)}%`;
+
+            const barRetainerEl = document.getElementById('bar-retainer');
+            const barUpsellEl = document.getElementById('bar-upsell');
+            if (barRetainerEl && barUpsellEl) {
+                const retainerPct = monthlyTotalRevenue > 0 ? (retainerRevenueThisMonth / monthlyTotalRevenue) * 100 : 100;
+                const upsellPct = monthlyTotalRevenue > 0 ? (extraRevenueThisMonth / monthlyTotalRevenue) * 100 : 0;
+                barRetainerEl.style.width = `${retainerPct}%`;
+                barUpsellEl.style.width = `${upsellPct}%`;
+            }
+
+            const upsellExtraSumEl = document.getElementById('stat-upsell-extra-sum');
+            if (upsellExtraSumEl) {
+                upsellExtraSumEl.innerText = `$${extraRevenueThisMonth.toLocaleString()} за доп. услуги в этом месяце`;
+            }
+
+            // INCOME CONCENTRATION RISK
+            let activeClientsForecastSum = 0;
+            clientsData.forEach(c => {
+                if (!c.archived && c.status === 'Активен') {
+                    activeClientsForecastSum += parseFloat(c.amount) || 0;
+                }
+            });
+
+            let maxConcentrationClient = null;
+            let maxConcentrationPct = 0;
+            let hasConcentrationRisk = false;
+
+            if (activeClientsForecastSum > 0) {
+                clientsData.forEach(c => {
+                    if (!c.archived && c.status === 'Активен') {
+                        const amt = parseFloat(c.amount) || 0;
+                        const pct = (amt / activeClientsForecastSum) * 100;
+                        if (pct > maxConcentrationPct) {
+                            maxConcentrationPct = pct;
+                            maxConcentrationClient = c;
+                        }
+                    }
+                });
+                if (maxConcentrationPct > 25) {
+                    hasConcentrationRisk = true;
+                }
+            }
+
+            const riskContainer = document.getElementById('risk-insight-container');
+            const riskText = document.getElementById('risk-insight-text');
+            const riskIconContainer = document.getElementById('risk-insight-icon-container');
+            
+            if (riskContainer && riskText) {
+                if (hasConcentrationRisk && maxConcentrationClient) {
+                    riskText.innerText = `⚠️ Высокая зависимость от клиента ${maxConcentrationClient.name}: ${maxConcentrationPct.toFixed(1)}%`;
+                    riskText.className = "text-xs font-bold uppercase tracking-wider text-red-400";
+                    riskContainer.className = "glass rounded-3xl p-5 border border-red-500/20 bg-red-500/5 flex items-center justify-between transition-all duration-300";
+                    if (riskIconContainer) {
+                        riskIconContainer.innerHTML = '<i data-lucide="shield-alert" class="w-5 h-5 text-red-400"></i>';
+                    }
+                } else {
+                    riskText.innerText = "✅ Портфель диверсифицирован";
+                    riskText.className = "text-xs font-bold uppercase tracking-wider text-emerald-400";
+                    riskContainer.className = "glass rounded-3xl p-5 border border-white/5 flex items-center justify-between transition-all duration-300";
+                    if (riskIconContainer) {
+                        riskIconContainer.innerHTML = '<i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i>';
+                    }
+                }
+                lucide.createIcons();
+            }
             const ltvCont = document.getElementById('ltv-stats-container');
             if(ltvCont) ltvCont.innerHTML = topClients.sort((a,b) => b.sum - a.sum).slice(0, 5).map(item => `<div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5"><span class="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[120px]">${item.name}</span><span class="text-cyan-400 font-bold">$${item.sum.toLocaleString()}</span></div>`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase">Нет оплат</p>';
             const monthCont = document.getElementById('monthly-stats-container');
@@ -792,7 +917,501 @@
                 const sorted = Object.keys(flowHistory).sort((a,b) => { const p = (s) => new Date(s.split(' ')[1], ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'].indexOf(s.split(' ')[0])); return p(b) - p(a); });
                 monthCont.innerHTML = sorted.map(m => `<div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl"><span class="text-[11px] text-gray-400 font-bold uppercase">${m}</span><span class="text-white font-bold">$${flowHistory[m].toLocaleString()}</span></div>`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase text-center">История пуста</p>';
             }
+            
+            // Call processCohortData to dynamically render the cohort retention table
+            processCohortData();
+            renderRevenueTrendChart(activeClientsForecastSum);
         };
+
+        function processCohortData() {
+            const container = document.getElementById('cohort-breakdown-container');
+            if (!container) return;
+
+            const parseHistoryDate = (dateStr) => {
+                if (!dateStr) return null;
+                const parts = dateStr.split(',')[0].split('.');
+                if (parts.length === 3) {
+                    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                }
+                return null;
+            };
+
+            const getCohortKey = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                return `${y}-${m}`;
+            };
+
+            const cohorts = {};
+
+            clientsData.forEach(c => {
+                // 1. Найти дату самого первого платежа в history (или дата создания)
+                let cohortDate = null;
+                if (c.history && c.history.length > 0) {
+                    c.history.forEach(h => {
+                        const d = parseHistoryDate(h.date);
+                        if (d) {
+                            if (!cohortDate || d < cohortDate) {
+                                cohortDate = d;
+                            }
+                        }
+                    });
+                }
+                if (!cohortDate || isNaN(cohortDate.getTime())) {
+                    cohortDate = new Date(parseInt(c.id));
+                }
+                if (!cohortDate || isNaN(cohortDate.getTime())) {
+                    cohortDate = new Date(); // считать его "новым" текущего месяца
+                }
+
+                const cohortKey = getCohortKey(cohortDate);
+                const cohortLabel = cohortDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+
+                if (!cohorts[cohortKey]) {
+                    cohorts[cohortKey] = {
+                        label: cohortLabel,
+                        key: cohortKey,
+                        clientsCount: 0,
+                        monthsPaid: {} // index (0, 1, 2...) -> unique clients who paid
+                    };
+                }
+
+                cohorts[cohortKey].clientsCount += 1;
+
+                // 2. Найти все уникальные месяцы платежей
+                const paidMonthsSet = new Set();
+                if (c.history) {
+                    c.history.forEach(h => {
+                        if (h.text.includes('Платеж получен')) {
+                            const d = parseHistoryDate(h.date);
+                            if (d) {
+                                const diff = (d.getFullYear() - cohortDate.getFullYear()) * 12 + (d.getMonth() - cohortDate.getMonth());
+                                if (diff >= 0) {
+                                    paidMonthsSet.add(diff);
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Зафиксировать каждый уникальный месяц
+                paidMonthsSet.forEach(diff => {
+                    cohorts[cohortKey].monthsPaid[diff] = (cohorts[cohortKey].monthsPaid[diff] || 0) + 1;
+                });
+            });
+
+            // Сортируем когорты хронологически (по возрастанию ключа YYYY-MM)
+            const sortedCohortKeys = Object.keys(cohorts).sort();
+
+            if (sortedCohortKeys.length === 0) {
+                container.innerHTML = `<p class="text-gray-600 text-[10px] py-4 uppercase text-center">Нет данных</p>`;
+                return;
+            }
+
+            // Рендерим Heatmap-таблицу
+            let tableHTML = `
+                <div class="overflow-x-auto no-scrollbar -mx-2">
+                    <table class="w-full text-left border-collapse text-[9px] table-fixed min-w-[280px]">
+                        <thead>
+                            <tr class="border-b border-white/5 text-gray-500 font-bold uppercase tracking-widest text-[8px]">
+                                <th class="py-2 px-1 w-[80px]">Когорта</th>
+                                <th class="py-2 px-1 text-center w-[45px]">Кол-во</th>
+                                <th class="py-2 px-0.5 text-center">M0</th>
+                                <th class="py-2 px-0.5 text-center">M1</th>
+                                <th class="py-2 px-0.5 text-center">M2</th>
+                                <th class="py-2 px-0.5 text-center">M3</th>
+                                <th class="py-2 px-0.5 text-center">M4</th>
+                                <th class="py-2 px-0.5 text-center">M5</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+            `;
+
+            sortedCohortKeys.forEach(key => {
+                const cohort = cohorts[key];
+                // Преобразуем первую букву в верхний регистр
+                const formattedLabel = cohort.label.charAt(0).toUpperCase() + cohort.label.slice(1).replace(' г.', '');
+                
+                tableHTML += `
+                    <tr class="hover:bg-white/5">
+                        <td class="py-2 px-1 font-bold text-white truncate max-w-[80px]">${formattedLabel}</td>
+                        <td class="py-2 px-1 text-center text-gray-400 font-bold">${cohort.clientsCount} чел.</td>
+                `;
+
+                // Отображаем М0 - М5
+                for (let m = 0; m <= 5; m++) {
+                    const paidCount = cohort.monthsPaid[m] || 0;
+                    const pct = cohort.clientsCount > 0 ? (paidCount / cohort.clientsCount) * 100 : 0;
+                    const pctFormatted = pct > 0 ? `${Math.round(pct)}%` : '0%';
+                    
+                    // Цветовая индикация: градации bg-cyan-500 с разной прозрачностью
+                    // Используем RGBA для красивой прозрачности (rgba(6, 182, 212, ...))
+                    const bgStyle = pct > 0 ? `background-color: rgba(6, 182, 212, ${(pct / 100) * 0.45});` : 'background-color: rgba(255,255,255,0.02);';
+                    const textStyle = pct > 0 ? 'color: #fff; font-weight: 800;' : 'color: rgba(255,255,255,0.15);';
+
+                    tableHTML += `
+                        <td class="py-2 px-0.5 text-center transition-all duration-300" style="${bgStyle} ${textStyle}">
+                            ${pctFormatted}
+                        </td>
+                    `;
+                }
+
+                tableHTML += `</tr>`;
+            });
+
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            container.innerHTML = tableHTML;
+        }
+
+        function renderRevenueTrendChart(activeClientsForecastSum) {
+            const canvas = document.getElementById('revenue-trend-chart');
+            if (!canvas) return;
+
+            const parseHistoryDate = (dateStr) => {
+                if (!dateStr) return null;
+                const parts = dateStr.split(',')[0].split('.');
+                if (parts.length === 3) {
+                    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                }
+                return null;
+            };
+
+            const getClientActiveStateAtMonth = (c, targetYear, targetMonthIndex) => {
+                let startDate = null;
+                if (c.history && c.history.length > 0) {
+                    c.history.forEach(h => {
+                        const d = parseHistoryDate(h.date);
+                        if (d) {
+                            if (!startDate || d < startDate) {
+                                startDate = d;
+                            }
+                        }
+                    });
+                }
+                if (!startDate || isNaN(startDate.getTime())) {
+                    startDate = new Date(parseInt(c.id));
+                }
+                
+                const startYear = startDate.getFullYear();
+                const startMonth = startDate.getMonth();
+                
+                // Если целевой месяц строго раньше даты старта — клиент еще не существовал
+                if (targetYear < startYear || (targetYear === startYear && targetMonthIndex < startMonth)) {
+                    return false;
+                }
+                
+                let state = true; // С момента создания клиент изначально активен
+                
+                // Проигрываем хронологию переходов в архив/восстановлений
+                if (c.history && c.history.length > 0) {
+                    const parsedHistory = c.history
+                        .map(h => ({
+                            date: parseHistoryDate(h.date),
+                            text: h.text
+                        }))
+                        .filter(h => h.date !== null)
+                        .sort((a, b) => a.date - b.date);
+                        
+                    parsedHistory.forEach(h => {
+                        const hy = h.date.getFullYear();
+                        const hm = h.date.getMonth();
+                        // Учитываем только события, произошедшие до или в целевой месяц включительно
+                        if (hy < targetYear || (hy === targetYear && hm <= targetMonthIndex)) {
+                            if (h.text.includes('В архив')) {
+                                state = false;
+                            } else if (h.text.includes('Восстановлен')) {
+                                state = true;
+                            }
+                        }
+                    });
+                }
+                
+                // Корректировка для текущего архивного статуса
+                const now = new Date();
+                if (targetYear > now.getFullYear() || (targetYear === now.getFullYear() && targetMonthIndex >= now.getMonth())) {
+                    if (c.archived) {
+                        state = false;
+                    }
+                }
+                
+                return state;
+            };
+
+            // Generate chronological list of the last 12 months (oldest to newest)
+            const last12Months = [];
+            const now = new Date();
+            for (let i = 11; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const mKey = d.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+                last12Months.push({
+                    key: mKey,
+                    month: d.getMonth(),
+                    year: d.getFullYear(),
+                    displayLabel: mKey.charAt(0).toUpperCase() + mKey.slice(1).replace(' г.', '')
+                });
+            }
+
+            // Initialize aggregated datasets
+            const chartData = last12Months.map(m => ({
+                key: m.key,
+                displayLabel: m.displayLabel,
+                month: m.month,
+                year: m.year,
+                totalRevenue: 0,
+                newClientsCount: 0,
+                upsellSum: 0,
+                topCheckAmount: 0,
+                topCheckClient: '—',
+                forecastRevenue: 0
+            }));
+
+            // Track each client's absolute first payment month key
+            const clientFirstPaymentMonth = new Map();
+            clientsData.forEach(c => {
+                let firstDate = null;
+                if (c.history && c.history.length > 0) {
+                    c.history.forEach(h => {
+                        if (h.text.includes('Платеж получен')) {
+                            const d = parseHistoryDate(h.date);
+                            if (d) {
+                                if (!firstDate || d < firstDate) {
+                                    firstDate = d;
+                                }
+                            }
+                        }
+                    });
+                }
+                if (firstDate) {
+                    const mKey = firstDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+                    clientFirstPaymentMonth.set(c.id, mKey);
+                }
+            });
+
+            // Aggregate transaction data
+            clientsData.forEach(c => {
+                if (c.history) {
+                    c.history.forEach(h => {
+                        if (h.text.includes('Платеж получен')) {
+                            const d = parseHistoryDate(h.date);
+                            if (d) {
+                                const mKey = d.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+                                const targetMonth = chartData.find(cd => cd.key === mKey);
+                                if (targetMonth) {
+                                    const ext = h.text.match(/\$(\d+(?:\.\d+)?)/); 
+                                    const val = ext ? parseFloat(ext[1]) : (parseFloat(c.amount) || 0);
+
+                                    targetMonth.totalRevenue += val;
+
+                                    if (h.text.includes('(Доп)')) {
+                                        targetMonth.upsellSum += val;
+                                    }
+
+                                    if (val > targetMonth.topCheckAmount) {
+                                        targetMonth.topCheckAmount = val;
+                                        targetMonth.topCheckClient = c.name || '—';
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Count new clients and calculate dynamic forecast for each month
+            chartData.forEach(cd => {
+                let newCount = 0;
+                clientFirstPaymentMonth.forEach((mKey) => {
+                    if (mKey === cd.key) {
+                        newCount++;
+                    }
+                });
+                cd.newClientsCount = newCount;
+
+                // Calculate dynamic forecast for each month
+                let forecastSumForMonth = 0;
+                clientsData.forEach(c => {
+                    if (getClientActiveStateAtMonth(c, cd.year, cd.month)) {
+                        forecastSumForMonth += parseFloat(c.amount) || 0;
+                    }
+                });
+                cd.forecastRevenue = forecastSumForMonth;
+            });
+
+            // Chart.js clean instance lifecycle
+            if (window.revenueTrendChartInstance) {
+                window.revenueTrendChartInstance.destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            
+            // Neon cyan gradient fill
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            gradient.addColorStop(0, 'rgba(0, 242, 255, 0.25)');
+            gradient.addColorStop(1, 'rgba(0, 242, 255, 0.0)');
+
+            // Local shadow plugin for premium neon drop shadow on dataset index 0
+            const shadowPlugin = {
+                id: 'shadowPlugin',
+                beforeDatasetDraw: (chart, args) => {
+                    const { ctx } = chart;
+                    if (args.index === 0) {
+                        ctx.save();
+                        ctx.shadowColor = 'rgba(0, 242, 255, 0.8)';
+                        ctx.shadowBlur = 10;
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 0;
+                    }
+                },
+                afterDatasetDraw: (chart, args) => {
+                    const { ctx } = chart;
+                    if (args.index === 0) {
+                        ctx.restore();
+                    }
+                }
+            };
+
+            window.revenueTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.map(cd => cd.displayLabel),
+                    datasets: [
+                        {
+                            label: 'Факт (Платежи)',
+                            data: chartData.map(cd => cd.totalRevenue),
+                            borderColor: '#00f2ff',
+                            borderWidth: 3.5,
+                            backgroundColor: gradient,
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: '#00f2ff',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 1.5,
+                            pointRadius: 4,
+                            pointHoverRadius: 7,
+                            pointHoverBackgroundColor: '#00f2ff',
+                            pointHoverBorderColor: '#ffffff',
+                            pointHoverBorderWidth: 2,
+                        },
+                        {
+                            label: 'Прогноз',
+                            data: chartData.map(cd => cd.forecastRevenue),
+                            borderColor: 'rgba(0, 242, 255, 0.35)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                font: {
+                                    family: 'Plus Jakarta Sans',
+                                    size: 9,
+                                    weight: 'bold'
+                                },
+                                boxWidth: 12,
+                                boxHeight: 12,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(10, 10, 15, 0.95)',
+                            titleColor: '#ffffff',
+                            titleFont: {
+                                family: 'Plus Jakarta Sans',
+                                size: 11,
+                                weight: 'bold'
+                            },
+                            bodyColor: '#e4e4e7',
+                            bodyFont: {
+                                family: 'Plus Jakarta Sans',
+                                size: 10
+                            },
+                            borderColor: 'rgba(255, 255, 255, 0.08)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.datasetIndex === 0) {
+                                        const index = context.dataIndex;
+                                        const data = chartData[index];
+                                        const isMobile = window.innerWidth < 768;
+                                        
+                                        if (isMobile) {
+                                            return `💰 Выручка: $${data.totalRevenue.toLocaleString()}`;
+                                        } else {
+                                            return [
+                                                `💰 Общая выручка: $${data.totalRevenue.toLocaleString()}`,
+                                                `🆕 Новые клиенты: ${data.newClientsCount} чел.`,
+                                                `💎 Апсейлы (Допы): $${data.upsellSum.toLocaleString()}`,
+                                                `🏆 Топ-чек: ${data.topCheckClient} ($${data.topCheckAmount.toLocaleString()})`
+                                            ];
+                                        }
+                                    } else {
+                                        const index = context.dataIndex;
+                                        const data = chartData[index];
+                                        return `🔮 Прогноз: $${data.forecastRevenue.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.03)',
+                                borderColor: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.45)',
+                                font: {
+                                    family: 'Plus Jakarta Sans',
+                                    size: 9
+                                }
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.03)',
+                                borderColor: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.45)',
+                                font: {
+                                    family: 'Plus Jakarta Sans',
+                                    size: 9
+                                },
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [shadowPlugin]
+            });
+        }
 
         window.openClientProfile = function(id, silent = false) {
             currentClientId = id; const c = clientsData.find(x => x.id === id); if (!c) return;
