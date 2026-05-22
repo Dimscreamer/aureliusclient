@@ -357,7 +357,7 @@
                                 </div>
                         </div>
                         <div class="stat-card border-cyan-500/20 bg-cyan-500/5">
-                            <span class="text-[9px] text-cyan-400 font-bold uppercase tracking-widest block mb-1">Прогноз на этот месяц</span>
+                            <span class="text-[9px] text-cyan-400 font-bold uppercase tracking-widest block mb-1">Прогноз на этот month</span>
                             <h3 id="stat-forecast-revenue" class="text-3xl font-bold text-cyan-400">$0</h3>
                         </div>
                         <div class="stat-card border-red-500/20">
@@ -378,7 +378,6 @@
                         </div>
                     </div>
 
-                    <!-- Risk Management Insight -->
                     <div id="risk-insight-container" class="glass rounded-3xl p-5 border border-white/5 flex items-center justify-between transition-all duration-300">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10" id="risk-insight-icon-container">
@@ -393,30 +392,29 @@
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
                         <div class="glass rounded-3xl p-8 lg:col-span-1 border-white/5">
-                            <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
+                            <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
                                 <i data-lucide="award" class="w-4 h-4 text-cyan-400"></i> ТОП Клиентов (Факт)
-                            </h4>
+                            </div>
                             <div id="ltv-stats-container" class="space-y-3"></div>
                         </div>
                         <div class="glass rounded-3xl p-8 lg:col-span-1 border-white/5">
-                            <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
+                            <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
                                 <i data-lucide="calendar" class="w-4 h-4 text-cyan-400"></i> Денежный поток
-                            </h4>
+                            </div>
                             <div id="monthly-stats-container" class="space-y-3"></div>
                         </div>
                         <div class="glass rounded-3xl p-8 lg:col-span-1 border-white/5">
-                            <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
+                            <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
                                 <i data-lucide="pie-chart" class="w-4 h-4 text-cyan-400"></i> Когорты
-                            </h4>
+                            </div>
                             <div id="cohort-breakdown-container" class="space-y-3"></div>
                         </div>
                     </div>
 
-                    <!-- Revenue Trend Chart -->
                     <div class="glass rounded-3xl p-8 border border-white/5">
-                        <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
+                        <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
                             <i data-lucide="trending-up" class="w-4 h-4 text-cyan-400"></i> 📈 Динамика выручки
-                        </h4>
+                        </div>
                         <div class="h-[300px] w-full relative">
                             <canvas id="revenue-trend-chart"></canvas>
                         </div>
@@ -480,9 +478,9 @@
                             </div>
 
                             <div class="glass rounded-[2rem] p-8 border-white/5">
-                                <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
+                                <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
                                     <i data-lucide="banknote" class="w-4 h-4 text-cyan-400"></i> Финансы
-                                </h4>
+                                </div>
                                 <div class="flex flex-col gap-4">
                                     <div class="flex flex-col gap-1.5">
                                         <label class="text-[9px] text-gray-500 uppercase font-bold tracking-widest ml-1">Сумма ($)</label>
@@ -505,18 +503,18 @@
                             </div>
 
                             <div class="glass rounded-[2rem] p-8 h-[300px] flex flex-col border-white/5">
-                                <h4 class="text-gray-500 font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-4">
+                                <div class="text-gray-500 font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-4">
                                     <i data-lucide="history" class="w-4 h-4"></i> Лог событий
-                                </h4>
+                                </div>
                                 <div id="history-log" class="flex-1 overflow-y-auto custom-scrollbar space-y-1"></div>
                             </div>
                         </div>
 
                         <div class="lg:col-span-8 space-y-6">
                             <div class="glass rounded-[2rem] p-8 border-white/5">
-                                <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
+                                <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
                                     <i data-lucide="terminal" class="w-4 h-4 text-cyan-400"></i> Рабочая область
-                                </h4>
+                                </div>
                                 
                                 <div class="flex flex-col gap-2 p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl mb-6">
                                     <label class="text-[9px] text-cyan-400 font-black uppercase tracking-[0.2em]">Google Ads ID (10 цифр для синхронизации)</label>
@@ -557,9 +555,9 @@
 
                             <div class="glass rounded-[2rem] p-8 border-white/5">
                                 <div class="flex justify-between items-center mb-6">
-                                    <h4 class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest">
+                                    <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest">
                                         <i data-lucide="shopping-bag" class="w-4 h-4 text-cyan-400"></i> Дополнительные услуги
-                                    </h4>
+                                    </div>
                                     <button onclick="addExtraService()" class="text-cyan-400 hover:text-white transition-colors"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
                                 </div>
                                 <div id="extra-services-list" class="space-y-2 mb-4"></div>
@@ -579,9 +577,9 @@
                             </div>
 
                             <div class="glass rounded-[2rem] p-8 min-h-[300px] flex flex-col relative overflow-hidden border-white/5">
-                                <h4 class="text-cyan-400 font-bold flex items-center gap-3 uppercase text-[10px] tracking-widest mb-4">
+                                <div class="text-cyan-400 font-bold flex items-center gap-3 uppercase text-[10px] tracking-widest mb-4">
                                     <i data-lucide="brain-circuit" class="w-5 h-5 animate-pulse"></i> Характеристика клиента (Психотип)
-                                </h4>
+                                </div>
                                 <textarea 
                                     id="detail-ai-analysis" 
                                     onblur="saveProfileChanges()" 
@@ -683,12 +681,10 @@
             if (client.status === 'Пауза') { info.color = 'paused'; info.label = 'НА ПАУЗЕ'; info.churnRisk = true; info.cohort = 'problematic'; info.priority = 4; }
             else if (client.status === 'Ожидание') { info.color = 'warning'; info.label = 'ОЖИДАНИЕ'; info.priority = 1; }
             
-            // Логика дат: если абонентка (recurring) выключена - не считаем долг
             if (client.status !== 'Пауза' && client.date) {
                 const inputDate = new Date(client.date); const compareDate = new Date(inputDate.getFullYear(), inputDate.getMonth(), inputDate.getDate());
                 info.dueDateObj = compareDate;
                 
-                // Если recurring включен (по умолчанию true для старых)
                 const isRecurring = client.recurring !== false; 
                 
                 if (isRecurring) {
@@ -697,7 +693,7 @@
                     if (diffDays > 5) { info.label = `ДОЛГ: ${diffDays} ДН.`; info.color = 'danger'; info.overdue = true; info.churnRisk = true; info.priority = 0; }
                     else if (diffDays >= 0 || Math.ceil((compareDate - today) / (1000 * 60 * 60 * 24)) <= 5) { info.label = 'ОЖИДАНИЕ'; info.color = 'warning'; info.priority = 1; }
                 } else {
-                    info.nextDateStr = 'Проект'; // Если разовый проект
+                    info.nextDateStr = 'Проект'; 
                     info.label = 'ПРОЕКТ';
                     info.color = 'paused';
                 }
@@ -785,17 +781,14 @@
                             const pDate = new Date(parseInt(dateParts[2]), parseInt(dateParts[1])-1, parseInt(dateParts[0]));
                             const mKey = pDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
                             
-                            // Улучшенное регулярное выражение для поиска $ и цифр после него
                             const ext = h.text.match(/\$(\d+(?:\.\d+)?)/); 
                             const val = ext ? parseFloat(ext[1]) : amt;
 
-                            // Проверяем ключевые фразы
                             if (h.text.includes('Платеж получен')) {
                                 clientFactSum += val; 
                                 totalActualReceived += val; 
                                 flowHistory[mKey] = (flowHistory[mKey] || 0) + val;
 
-                                // Разделение на Ведение и Допы (за все время)
                                 if (h.text.includes('(Доп)')) {
                                     extraTotal += val;
                                 } else {
@@ -803,7 +796,6 @@
                                 }
                             }
 
-                            // Разделение на Ведение и Допы (за текущий календарный месяц)
                             if (pDate.getMonth() === currentMonth && pDate.getFullYear() === currentYear) {
                                 if (h.text.includes('(Доп)')) {
                                     extraRevenueThisMonth += val;
@@ -822,7 +814,6 @@
             });
 
             document.getElementById('stat-total-revenue').innerText = `$${totalActualReceived.toLocaleString()}`;
-            // Вставляем разбивку
             const breakdownEl = document.getElementById('revenue-breakdown');
             if (breakdownEl) {
                 breakdownEl.innerHTML = `
@@ -839,7 +830,6 @@
                 activeCountEl.innerText = clientsData.filter(c => !c.archived && c.status === 'Активен').length;
             }
 
-            // UPSELL POWER DISPLAY
             const monthlyTotalRevenue = retainerRevenueThisMonth + extraRevenueThisMonth;
             const upsellPower = monthlyTotalRevenue > 0 ? (extraRevenueThisMonth / monthlyTotalRevenue) * 100 : 0;
             
@@ -860,7 +850,6 @@
                 upsellExtraSumEl.innerText = `$${extraRevenueThisMonth.toLocaleString()} за доп. услуги в этом месяце`;
             }
 
-            // INCOME CONCENTRATION RISK
             let activeClientsForecastSum = 0;
             clientsData.forEach(c => {
                 if (!c.archived && c.status === 'Активен') {
@@ -918,7 +907,6 @@
                 monthCont.innerHTML = sorted.map(m => `<div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl"><span class="text-[11px] text-gray-400 font-bold uppercase">${m}</span><span class="text-white font-bold">$${flowHistory[m].toLocaleString()}</span></div>`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase text-center">История пуста</p>';
             }
             
-            // Call processCohortData to dynamically render the cohort retention table
             processCohortData();
             renderRevenueTrendChart(activeClientsForecastSum);
         };
@@ -945,7 +933,6 @@
             const cohorts = {};
 
             clientsData.forEach(c => {
-                // 1. Найти дату самого первого платежа в history (или дата создания)
                 let cohortDate = null;
                 if (c.history && c.history.length > 0) {
                     c.history.forEach(h => {
@@ -961,7 +948,7 @@
                     cohortDate = new Date(parseInt(c.id));
                 }
                 if (!cohortDate || isNaN(cohortDate.getTime())) {
-                    cohortDate = new Date(); // считать его "новым" текущего месяца
+                    cohortDate = new Date(); 
                 }
 
                 const cohortKey = getCohortKey(cohortDate);
@@ -972,13 +959,12 @@
                         label: cohortLabel,
                         key: cohortKey,
                         clientsCount: 0,
-                        monthsPaid: {} // index (0, 1, 2...) -> unique clients who paid
+                        monthsPaid: {} 
                     };
                 }
 
                 cohorts[cohortKey].clientsCount += 1;
 
-                // 2. Найти все уникальные месяцы платежей
                 const paidMonthsSet = new Set();
                 if (c.history) {
                     c.history.forEach(h => {
@@ -994,13 +980,11 @@
                     });
                 }
 
-                // Зафиксировать каждый уникальный месяц
                 paidMonthsSet.forEach(diff => {
                     cohorts[cohortKey].monthsPaid[diff] = (cohorts[cohortKey].monthsPaid[diff] || 0) + 1;
                 });
             });
 
-            // Сортируем когорты хронологически (по возрастанию ключа YYYY-MM)
             const sortedCohortKeys = Object.keys(cohorts).sort();
 
             if (sortedCohortKeys.length === 0) {
@@ -1008,7 +992,6 @@
                 return;
             }
 
-            // Рендерим Heatmap-таблицу
             let tableHTML = `
                 <div class="overflow-x-auto no-scrollbar -mx-2">
                     <table class="w-full text-left border-collapse text-[9px] table-fixed min-w-[280px]">
@@ -1029,7 +1012,6 @@
 
             sortedCohortKeys.forEach(key => {
                 const cohort = cohorts[key];
-                // Преобразуем первую букву в верхний регистр
                 const formattedLabel = cohort.label.charAt(0).toUpperCase() + cohort.label.slice(1).replace(' г.', '');
                 
                 tableHTML += `
@@ -1038,14 +1020,11 @@
                         <td class="py-2 px-1 text-center text-gray-400 font-bold">${cohort.clientsCount} чел.</td>
                 `;
 
-                // Отображаем М0 - М5
                 for (let m = 0; m <= 5; m++) {
                     const paidCount = cohort.monthsPaid[m] || 0;
                     const pct = cohort.clientsCount > 0 ? (paidCount / cohort.clientsCount) * 100 : 0;
                     const pctFormatted = pct > 0 ? `${Math.round(pct)}%` : '0%';
                     
-                    // Цветовая индикация: градации bg-cyan-500 с разной прозрачностью
-                    // Используем RGBA для красивой прозрачности (rgba(6, 182, 212, ...))
                     const bgStyle = pct > 0 ? `background-color: rgba(6, 182, 212, ${(pct / 100) * 0.45});` : 'background-color: rgba(255,255,255,0.02);';
                     const textStyle = pct > 0 ? 'color: #fff; font-weight: 800;' : 'color: rgba(255,255,255,0.15);';
 
@@ -1100,14 +1079,12 @@
                 const startYear = startDate.getFullYear();
                 const startMonth = startDate.getMonth();
                 
-                // Если целевой месяц строго раньше даты старта — клиент еще не существовал
                 if (targetYear < startYear || (targetYear === startYear && targetMonthIndex < startMonth)) {
                     return false;
                 }
                 
-                let state = true; // С момента создания клиент изначально активен
+                let state = true; 
                 
-                // Проигрываем хронологию переходов в архив/восстановлений
                 if (c.history && c.history.length > 0) {
                     const parsedHistory = c.history
                         .map(h => ({
@@ -1120,7 +1097,6 @@
                     parsedHistory.forEach(h => {
                         const hy = h.date.getFullYear();
                         const hm = h.date.getMonth();
-                        // Учитываем только события, произошедшие до или в целевой месяц включительно
                         if (hy < targetYear || (hy === targetYear && hm <= targetMonthIndex)) {
                             if (h.text.includes('В архив')) {
                                 state = false;
@@ -1131,7 +1107,6 @@
                     });
                 }
                 
-                // Корректировка для текущего архивного статуса
                 const now = new Date();
                 if (targetYear > now.getFullYear() || (targetYear === now.getFullYear() && targetMonthIndex >= now.getMonth())) {
                     if (c.archived) {
@@ -1142,7 +1117,6 @@
                 return state;
             };
 
-            // Generate chronological list of the last 12 months (oldest to newest)
             const last12Months = [];
             const now = new Date();
             for (let i = 11; i >= 0; i--) {
@@ -1156,7 +1130,6 @@
                 });
             }
 
-            // Initialize aggregated datasets
             const chartData = last12Months.map(m => ({
                 key: m.key,
                 displayLabel: m.displayLabel,
@@ -1170,7 +1143,6 @@
                 forecastRevenue: 0
             }));
 
-            // Track each client's absolute first payment month key
             const clientFirstPaymentMonth = new Map();
             clientsData.forEach(c => {
                 let firstDate = null;
@@ -1192,7 +1164,6 @@
                 }
             });
 
-            // Aggregate transaction data
             clientsData.forEach(c => {
                 if (c.history) {
                     c.history.forEach(h => {
@@ -1222,7 +1193,6 @@
                 }
             });
 
-            // Count new clients and calculate dynamic forecast for each month
             chartData.forEach(cd => {
                 let newCount = 0;
                 clientFirstPaymentMonth.forEach((mKey) => {
@@ -1232,7 +1202,6 @@
                 });
                 cd.newClientsCount = newCount;
 
-                // Calculate dynamic forecast for each month
                 let forecastSumForMonth = 0;
                 clientsData.forEach(c => {
                     if (getClientActiveStateAtMonth(c, cd.year, cd.month)) {
@@ -1242,19 +1211,16 @@
                 cd.forecastRevenue = forecastSumForMonth;
             });
 
-            // Chart.js clean instance lifecycle
             if (window.revenueTrendChartInstance) {
                 window.revenueTrendChartInstance.destroy();
             }
 
             const ctx = canvas.getContext('2d');
             
-            // Neon cyan gradient fill
             const gradient = ctx.createLinearGradient(0, 0, 0, 300);
             gradient.addColorStop(0, 'rgba(0, 242, 255, 0.25)');
             gradient.addColorStop(1, 'rgba(0, 242, 255, 0.0)');
 
-            // Local shadow plugin for premium neon drop shadow on dataset index 0
             const shadowPlugin = {
                 id: 'shadowPlugin',
                 beforeDatasetDraw: (chart, args) => {
@@ -1425,7 +1391,6 @@
             document.getElementById('link-ads').value = c.links?.ads || ""; document.getElementById('link-ga').value = c.links?.ga || ""; document.getElementById('link-gtm').value = c.links?.gtm || ""; document.getElementById('link-site').value = c.links?.site || "";
             document.getElementById('detail-ai-analysis').value = c.ai_analysis || ""; document.getElementById('field-ads-id').value = c.adsId || "";
             
-            // Toggle Logic
             const toggle = document.getElementById('recurring-toggle');
             if (c.recurring === false) toggle.classList.remove('active'); else toggle.classList.add('active');
 
@@ -1437,7 +1402,6 @@
 
         window.toggleRecurring = async () => {
             const c = clientsData.find(x => x.id === currentClientId); if (!c) return;
-            // Если recurring undefined (старый клиент), считаем true. Переключаем.
             c.recurring = c.recurring === undefined ? false : !c.recurring;
             document.getElementById('recurring-toggle').classList.toggle('active');
             await saveProfileChanges(); openClientProfile(currentClientId, true);
@@ -1455,12 +1419,26 @@
             c.ai_analysis = document.getElementById('detail-ai-analysis').value || ""; c.adsId = document.getElementById('field-ads-id').value.replace(/\D/g, '') || "";
             c.links = { ads: document.getElementById('link-ads').value || "", ga: document.getElementById('link-ga').value || "", gtm: document.getElementById('link-gtm').value || "", site: document.getElementById('link-site').value || "" };
             
-            // Если абонентка выключена, мы можем не слать сигнал планировщику (или слать с пустым date)
             if (c.date && c.amount && c.recurring !== false) {
                 fetch(GOOGLE_SCRIPT_URL, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ action: 'syncPayment', clientId: c.id, clientName: c.name, amount: c.amount, targetDate: c.date, adsId: c.adsId }) 
+                    body: JSON.stringify({ 
+                        action: 'syncPayment', 
+                        clientId: c.id, 
+                        clientName: c.name, 
+                        amount: c.amount, 
+                        targetDate: c.date, 
+                        adsId: c.adsId,
+                        siteUrl: c.links?.site || "",
+                        impressions: c.cachedImps || "",
+                        clicks: c.cachedClicks || "",
+                        convs: c.cachedConvs || "",
+                        cost: c.cachedCost || "",
+                        cpa: c.cachedCPA || "",
+                        currency: c.cachedCurr || "UAH",
+                        cachedConvDetails: c.cachedConvDetails || ""
+                    }) 
                 });
             }
 
@@ -1471,20 +1449,15 @@
         window.confirmPayment = async () => {
             const client = clientsData.find(c => c.id === currentClientId); if (!client) return;
             const amt = client.amount || 0; 
-            const isRecurring = client.recurring !== false; // По умолчанию true
+            const isRecurring = client.recurring !== false; 
             
             let logMsg = `Платеж получен: $${amt}.`;
             let nStr = client.date;
 
             if (isRecurring) {
-                // ЛОГИКА ЯКІРНОГО ДНЯ (ANCHOR DAY)
-                // Берем сохраненную дату или создаем новую
                 let anchorDate = client.date ? new Date(client.date) : new Date();
-                
-                // Добавляем месяц
                 anchorDate.setMonth(anchorDate.getMonth() + 1);
                 
-                // Если клиент сильно просрочил, подтягиваем дату к ближайшему будущему
                 let now = new Date();
                 now.setHours(0,0,0,0);
                 while (anchorDate < now) {
@@ -1495,11 +1468,25 @@
                 client.date = nStr;
                 logMsg += ` След. оплата: ${nStr}`;
                 
-                // Продлеваем очередь авто-счетов
                 fetch(GOOGLE_SCRIPT_URL, { 
                     method: 'POST', 
                     headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ action: 'syncPayment', clientId: client.id, clientName: client.name, amount: client.amount, targetDate: nStr, adsId: client.adsId }) 
+                    body: JSON.stringify({ 
+                        action: 'syncPayment', 
+                        clientId: client.id, 
+                        clientName: client.name, 
+                        amount: client.amount, 
+                        targetDate: nStr, 
+                        adsId: client.adsId,
+                        siteUrl: client.links?.site || "",
+                        impressions: client.cachedImps || "",
+                        clicks: client.cachedClicks || "",
+                        convs: client.cachedConvs || "",
+                        cost: client.cachedCost || "",
+                        cpa: client.cachedCPA || "",
+                        currency: client.cachedCurr || "UAH",
+                        cachedConvDetails: client.cachedConvDetails || ""
+                    }) 
                 });
             } else {
                 logMsg += ` (Разовый проект)`;
@@ -1567,7 +1554,15 @@
                         clientName: c.name,
                         amount: c.amount,
                         clientId: c.id,
-                        adsId: c.adsId
+                        adsId: c.adsId,
+                        siteUrl: c.links?.site || "",
+                        impressions: c.cachedImps || "",
+                        clicks: c.cachedClicks || "",
+                        convs: c.cachedConvs || "",
+                        cost: c.cachedCost || "",
+                        cpa: c.cachedCPA || "",
+                        currency: c.cachedCurr || "UAH",
+                        cachedConvDetails: c.cachedConvDetails || ""
                     })
                 });
                 setTimeout(() => alert("Счет отправлен!"), 500);
