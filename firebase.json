@@ -14,13 +14,17 @@
     }
   ],
   "hosting": {
-    "public": "functions",
+    "public": "public",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api",
+        "function": "api"
+      },
       {
         "source": "**",
         "destination": "/index.html"

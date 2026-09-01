@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mark OS Settings</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --text-color: #e0e0e0;
+            --accent-color: #007aff;
+            --card-bg: #1e1e1e;
+            --border-color: #333;
+            --input-bg: #2a2a2a;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 16px;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .module-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .module-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            cursor: pointer;
+        }
+
+        .module-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .module-content {
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .module-content.active {
+            display: flex;
+        }
+
+        label {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .loader {
+            text-align: center;
+            padding: 40px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>MARK OS</h1>
+    
+    <div id="loader" class="loader">Loading configuration...</div>
+    <div id="modules-container"></div>
+
+    <script>
+        const API_URL = "https://api-lzh3pje5pa-uc.a.run.app";
+        let config = { modules: {} };
+        const tg = window.Telegram.WebApp;
+
+        tg.expand();
+        tg.MainButton.text = "СОХРАНИТЬ";
+        tg.MainButton.color = "#007aff";
+        
+        const modulesMeta = {
+            google_ads: { title: "📊 Google Ads & CRM" },
+            freelancehunt: { title: "💼 Freelancehunt" },
+            automation: { title: "⚙️ System & Automation" }
+        };
+
+        async function loadConfig() {
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "markOsGetConfig" })
+                });
+                config = await res.json();
+                renderModules();
+                document.getElementById('loader').style.display = 'none';
+            } catch (err) {
+                document.getElementById('loader').innerText = "Ошибка загрузки данных.";
+                console.error(err);
+            }
+        }
+
+        function renderModules() {
+            const container = document.getElementById('modules-container');
+            container.innerHTML = '';
+
+            for (const [key, meta] of Object.entries(modulesMeta)) {
+                if (!config.modules[key]) {
+                    config.modules[key] = { enabled: true, exactMatches: [], broadMatches: [] };
+                }
+                const modData = config.modules[key];
+                
+                const card = document.createElement('div');
+                card.className = 'module-card';
+                
+                card.innerHTML = `
+                    <div class="module-header" onclick="toggleModule('${key}')">
+                        <span class="module-title">${meta.title}</span>
+                        <div class="switch-container" onclick="event.stopPropagation()">
+                            <label class="switch">
+                                <input type="checkbox" id="enable_${key}" ${modData.enabled ? 'checked' : ''} onchange="markDirty()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="module-content" id="content_${key}">
+                        <label>Exact Matches (через запятую)</label>
+                        <input type="text" id="exact_${key}" value="${modData.exactMatches.join(', ')}" oninput="markDirty()">
+                        
+                        <label>Broad Matches (через запятую)</label>
+                        <input type="text" id="broad_${key}" value="${modData.broadMatches.join(', ')}" oninput="markDirty()">
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        window.toggleModule = function(key) {
+            const content = document.getElementById('content_' + key);
+            content.classList.toggle('active');
+        };
+
+        function markDirty() {
+            if (!tg.MainButton.isVisible) {
+                tg.MainButton.show();
+            }
+        }
+
+        tg.MainButton.onClick(async () => {
+            tg.MainButton.showProgress();
+            
+            // Gather data
+            for (const key of Object.keys(modulesMeta)) {
+                const isEnabled = document.getElementById('enable_' + key).checked;
+                const exactRaw = document.getElementById('exact_' + key).value;
+                const broadRaw = document.getElementById('broad_' + key).value;
+                
+                config.modules[key].enabled = isEnabled;
+                config.modules[key].exactMatches = exactRaw.split(',').map(s => s.trim()).filter(Boolean);
+                config.modules[key].broadMatches = broadRaw.split(',').map(s => s.trim()).filter(Boolean);
+            }
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "markOsSaveConfig", config: config })
+                });
+                tg.showPopup({ title: "Успех", message: "Настройки Mark OS сохранены!" }, () => {
+                    tg.close();
+                });
+            } catch (e) {
+                tg.showPopup({ title: "Ошибка", message: "Не удалось сохранить настройки." });
+            } finally {
+                tg.MainButton.hideProgress();
+                tg.MainButton.hide();
+            }
+        });
+
+        // Init
+        loadConfig();
+    </script>
+</body>
+</html>
