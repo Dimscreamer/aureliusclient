@@ -11,6 +11,17 @@ class EmanuelTelegram {
     }
 
     /**
+     * Экранирование спецсимволов HTML
+     */
+    escapeHtml(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    /**
      * Экранирование и санитизация HTML для Telegram
      */
     formatHtml(text) {

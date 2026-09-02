@@ -383,14 +383,19 @@ window.EmanuelOS = {
                         </span>
                     </div>
 
-                    <!-- Текст хода -->
-                    <div class="text-base sm:text-lg text-white font-medium leading-relaxed font-sans mb-6 p-4 rounded-2xl bg-black/30 border border-white/5">
-                        «${escapeHtml(res.reply)}»
+                    <!-- Текст хода (клик копирует чистый текст) -->
+                    <div onclick="window.EmanuelOS.copyCurrentAdvice()" 
+                         class="group relative text-base sm:text-lg text-white font-medium leading-relaxed font-sans mb-6 p-4 rounded-2xl bg-black/40 border border-white/10 hover:border-rose-500/40 transition cursor-pointer" 
+                         title="Нажми, чтобы скопировать">
+                        <div class="select-all font-sans">${escapeHtml(res.reply)}</div>
+                        <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition px-2 py-1 rounded bg-rose-500 text-white text-[10px] font-bold flex items-center gap-1 shadow">
+                            <i data-lucide="copy" class="w-3 h-3"></i> Скопировать
+                        </div>
                     </div>
 
                     <!-- Действия под ходом -->
                     <div class="flex items-center flex-wrap gap-2.5">
-                        <button onclick="window.EmanuelOS.copyText('${escapeHtml(res.reply)}')" 
+                        <button onclick="window.EmanuelOS.copyCurrentAdvice()" 
                                 class="px-5 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-lg shadow-rose-500/25 active:scale-95">
                             <i data-lucide="copy" class="w-4 h-4"></i>
                             <span>Скопировать ход</span>
@@ -407,7 +412,7 @@ window.EmanuelOS = {
                         </button>
                     </div>
 
-                    <!-- Обоснование хода -->
+                    <!-- Обоснование хода (отделено от текста) -->
                     <div class="mt-5 pt-4 border-t border-white/10 flex items-start gap-2.5 text-xs text-slate-300 leading-relaxed font-sans">
                         <div class="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-[10px] flex-shrink-0 mt-0.5">
                             💡
@@ -421,6 +426,11 @@ window.EmanuelOS = {
         `;
 
         if (window.lucide) lucide.createIcons();
+    },
+
+    copyCurrentAdvice() {
+        if (!this.lastAdvice?.reply) return;
+        this.copyText(this.lastAdvice.reply);
     },
 
     async openLeadMeModal() {

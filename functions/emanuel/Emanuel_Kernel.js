@@ -40,16 +40,17 @@ async function getMainKeyboard(db, userId) {
 /**
  * Инлайн-клавиатура под единственным лучшим ходом
  */
-function getAdviceInlineKeyboard(session, reason) {
+function getAdviceInlineKeyboard(session, replyText) {
     const sId = session?.id || 'session_default';
+    const cleanText = String(replyText || '').trim();
     return {
         inline_keyboard: [
             [
-                { text: '🔄 Другой вариант', callback_data: `act_alt_${sId}` },
-                { text: '⚡ Быстрее', callback_data: `act_fast_${sId}` }
+                { text: '📋 Скопировать ответ', copy_text: { text: cleanText } }
             ],
             [
-                { text: '🧠 Почему этот ход?', callback_data: `act_why_${sId}` }
+                { text: '🔄 Другой вариант', callback_data: `act_alt_${sId}` },
+                { text: '⚡ Быстрее', callback_data: `act_fast_${sId}` }
             ]
         ]
     };
@@ -498,18 +499,23 @@ async function processTextInput(chatId, userId, sessionId, text, fastTrack = fal
             headerLabel = '🎯 <b>Ход: Закрытие на встречу:</b>';
         }
 
+        const escapedName = Telegram.escapeHtml(active.name);
+        const cleanReply = String(result.reply || '').trim();
+        const escapedReply = Telegram.escapeHtml(cleanReply);
+        const escapedReason = Telegram.escapeHtml(result.reason || 'Оптимальный ход для проверки совместимости.');
+
         const msgText = 
-            `👩 <b>[${active.name}]</b>\n\n` +
-            `${headerLabel}\n\n` +
-            `«${result.reply}»\n\n` +
-            `💡 <i>${result.reason}</i>`;
+            `👩 <b>[${escapedName}]</b> • ${headerLabel}\n\n` +
+            `<code>${escapedReply}</code>\n\n` +
+            `<blockquote expandable>💡 <b>Почему этот ход:</b>\n` +
+            `${escapedReason}</blockquote>`;
 
-        const inlineKb = getAdviceInlineKeyboard(active, result.reason);
+        const inlineKb = getAdviceInlineKeyboard(active, cleanReply);
 
-        await Telegram.sendMessage(chatId, msgText, { replyMarkup: inlineKb });
+        await Telegram.sendMessage(chatId, msgText, { replyMarkup: inlineKb, skipFormat: true });
 
         // Сохраняем результат в сессию
-        await Database.addTurn(db, userId, active.id, text, result.reply, {
+        await Database.addTurn(db, userId, active.id, text, cleanReply, {
             state: result.state,
             stepsToTaboo: result.stepsToTaboo,
             nextAction: result.nextAction,
@@ -517,7 +523,7 @@ async function processTextInput(chatId, userId, sessionId, text, fastTrack = fal
             confidence: result.confidence
         });
 
-        await Database.logAction(db, userId, fastTrack ? 'FAST_TRACK' : 'TEXT', text, result.reply, result.durationMs);
+        await Database.logAction(db, userId, fastTrack ? 'FAST_TRACK' : 'TEXT', text, cleanReply, result.durationMs);
 
     } catch (err) {
         console.error('processTextInput error:', err);
@@ -559,17 +565,22 @@ async function processMediaInput(chatId, userId, sessionId, fileId, caption, fas
             headerLabel = '🎯 <b>Ход: Закрытие на встречу:</b>';
         }
 
+        const escapedName = Telegram.escapeHtml(active.name);
+        const cleanReply = String(result.reply || '').trim();
+        const escapedReply = Telegram.escapeHtml(cleanReply);
+        const escapedReason = Telegram.escapeHtml(result.reason || 'Оптимальный ход для проверки совместимости.');
+
         const msgText = 
-            `👩 <b>[${active.name}]</b>\n\n` +
-            `${headerLabel}\n\n` +
-            `«${result.reply}»\n\n` +
-            `💡 <i>${result.reason}</i>`;
+            `👩 <b>[${escapedName}]</b> • ${headerLabel}\n\n` +
+            `<code>${escapedReply}</code>\n\n` +
+            `<blockquote expandable>💡 <b>Почему этот ход:</b>\n` +
+            `${escapedReason}</blockquote>`;
 
-        const inlineKb = getAdviceInlineKeyboard(active, result.reason);
+        const inlineKb = getAdviceInlineKeyboard(active, cleanReply);
 
-        await Telegram.sendMessage(chatId, msgText, { replyMarkup: inlineKb });
+        await Telegram.sendMessage(chatId, msgText, { replyMarkup: inlineKb, skipFormat: true });
 
-        await Database.addTurn(db, userId, active.id, caption || '[Скриншот переписки]', result.reply, {
+        await Database.addTurn(db, userId, active.id, caption || '[Скриншот переписки]', cleanReply, {
             state: result.state,
             stepsToTaboo: result.stepsToTaboo,
             nextAction: result.nextAction,
@@ -577,7 +588,7 @@ async function processMediaInput(chatId, userId, sessionId, fileId, caption, fas
             confidence: result.confidence
         });
 
-        await Database.logAction(db, userId, 'PHOTO', caption || '[Скриншот]', result.reply, result.durationMs);
+        await Database.logAction(db, userId, 'PHOTO', caption || '[Скриншот]', cleanReply, result.durationMs);
 
     } catch (err) {
         console.error('processMediaInput error:', err);
