@@ -1019,8 +1019,26 @@
                                         </button>
                                     </div>
                                 </div>
-                                <div id="emanuel-slots-list" class="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                                <div id="emanuel-slots-list" class="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                                     <!-- Dynamic Sessions -->
+                                </div>
+                            </div>
+
+                            <!-- Girl Profile & Dossier Card -->
+                            <div class="glass rounded-2xl p-5 border border-white/5 space-y-4">
+                                <div class="flex items-center justify-between border-b border-white/5 pb-3">
+                                    <div class="flex items-center gap-2">
+                                        <i data-lucide="book-open" class="w-4 h-4 text-purple-400"></i>
+                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">Досье девушки</h4>
+                                    </div>
+                                    <input type="file" id="emanuel-profile-file-input" accept="image/*" class="hidden">
+                                    <button onclick="document.getElementById('emanuel-profile-file-input').click()" 
+                                            class="text-[10px] px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30 font-bold transition flex items-center gap-1">
+                                        <i data-lucide="camera" class="w-3 h-3"></i> Скрин анкеты
+                                    </button>
+                                </div>
+                                <div id="emanuel-dossier-wrap" class="space-y-3 text-xs text-slate-300">
+                                    <div class="text-slate-500 italic text-[11px]">Загрузи скриншот анкеты из Tinder/Pure для извлечения зацепок и скрытого подтекста.</div>
                                 </div>
                             </div>
                         </div>
@@ -1200,15 +1218,15 @@
     </main>
 
     <!-- Наши разделенные файлы логики (Classic Scripts) -->
-    <script src="/js/config.js?v=1788308500000"></script>
-    <script src="/js/state.js?v=1788308500000"></script>
-    <script src="/js/helpers.js?v=1788308500000"></script>
-    <script src="/js/api.js?v=1788308500000"></script>
-    <script src="/js/ui.js?v=1788308500000"></script>
-    <script src="/js/ares_os.js?v=1788308500000"></script>
-    <script src="/js/emanuel.js?v=1788308500000"></script>
+    <script src="/js/config.js?v=1788309000000"></script>
+    <script src="/js/state.js?v=1788309000000"></script>
+    <script src="/js/helpers.js?v=1788309000000"></script>
+    <script src="/js/api.js?v=1788309000000"></script>
+    <script src="/js/ui.js?v=1788309000000"></script>
+    <script src="/js/ares_os.js?v=1788309000000"></script>
+    <script src="/js/emanuel.js?v=1788309000000"></script>
     
     <!-- Точка входа (ES модуль для импорта Firebase) -->
-    <script type="module" src="/js/app.js?v=1788308500000"></script>
+    <script type="module" src="/js/app.js?v=1788309000000"></script>
 </body>
 </html>

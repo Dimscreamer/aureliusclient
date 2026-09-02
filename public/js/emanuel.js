@@ -43,6 +43,11 @@ window.EmanuelOS = {
             fileInput.addEventListener('change', (e) => this.handlePhotoSelect(e));
         }
 
+        const profileInput = document.getElementById('emanuel-profile-file-input');
+        if (profileInput) {
+            profileInput.addEventListener('change', (e) => this.handleProfilePhotoSelect(e));
+        }
+
         const girlInput = document.getElementById('emanuel-girl-text');
         if (girlInput) {
             girlInput.addEventListener('keydown', (e) => {
@@ -65,12 +70,58 @@ window.EmanuelOS = {
 
                 this.renderSessions();
                 this.updateActiveSessionHeader(this.currentSession);
+                this.updateDossierUI(this.currentSession);
                 await this.loadHistory();
             }
         } catch (e) {
             console.error('Error loading Emanuel data:', e);
             if (window.showNotification) showNotification('Ошибка подключения: ' + e.message, 'error');
         }
+    },
+
+    updateDossierUI(session) {
+        const wrap = document.getElementById('emanuel-dossier-wrap');
+        if (!wrap) return;
+
+        if (!session) {
+            wrap.innerHTML = `<div class="text-slate-500 italic text-[11px]">Выберите диалог.</div>`;
+            return;
+        }
+
+        const p = session.profile;
+        const d = session.dossier;
+
+        let html = '';
+
+        if (p) {
+            html += `
+                <div class="p-3 rounded-xl bg-purple-950/20 border border-purple-500/20 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-purple-300 text-[11px] uppercase tracking-wider">Анкета (Tinder/Pure)</span>
+                        <span class="text-[10px] text-slate-400">распознано</span>
+                    </div>
+                    ${p.statedGoal ? `<div class="text-[11px] text-white"><b class="text-purple-300">Цель:</b> «${escapeHtml(p.statedGoal)}»</div>` : ''}
+                    ${p.psychotype ? `<div class="text-[11px] text-slate-300 italic"><b class="text-purple-300">Скрытый вайб:</b> ${escapeHtml(p.psychotype)}</div>` : ''}
+                    ${p.bioText ? `<div class="text-[10px] text-slate-400"><b class="text-slate-300">Био:</b> ${escapeHtml(p.bioText)}</div>` : ''}
+                    ${Array.isArray(p.interests) && p.interests.length ? `<div class="text-[10px] text-purple-300 font-medium">✨ ${p.interests.map(escapeHtml).join(', ')}</div>` : ''}
+                </div>
+            `;
+        }
+
+        const taboos = d?.taboos?.length ? d.taboos.join(', ') : 'пока не выявлены';
+        const greenFlags = d?.greenFlags?.length ? d.greenFlags.join(', ') : 'пока не выявлены';
+
+        html += `
+            <div class="p-3 rounded-xl bg-white/5 border border-white/5 space-y-1.5">
+                <div class="font-bold text-rose-300 text-[11px] uppercase tracking-wider">Сексуальная совместимость</div>
+                <div class="text-[11px]"><b class="text-slate-400">Табу:</b> <span class="text-white">${escapeHtml(taboos)}</span></div>
+                <div class="text-[11px]"><b class="text-slate-400">Триггеры:</b> <span class="text-white">${escapeHtml(greenFlags)}</span></div>
+                ${d?.dateStyle ? `<div class="text-[11px]"><b class="text-slate-400">Формат встречи:</b> <span class="text-white">${escapeHtml(d.dateStyle)}</span></div>` : ''}
+            </div>
+        `;
+
+        wrap.innerHTML = html;
+        if (window.lucide) lucide.createIcons();
     },
 
     updateActiveSessionHeader(active) {
@@ -369,18 +420,43 @@ window.EmanuelOS = {
             borderColor = 'border-rose-500/50 shadow-rose-500/20';
         }
 
+        let timingHtml = '';
+        if (res.timingAdvice) {
+            timingHtml = `
+                <div class="flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold">
+                    <i data-lucide="clock" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                    <span>${escapeHtml(res.timingAdvice)}</span>
+                </div>
+            `;
+        }
+
+        let redFlagHtml = '';
+        if (res.redFlags) {
+            redFlagHtml = `
+                <div class="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs flex items-center gap-2.5 shadow-lg shadow-rose-950/40">
+                    <span class="text-base flex-shrink-0">⚠️</span>
+                    <div><b class="text-rose-400 uppercase tracking-wider">Red Flag / Манипуляция:</b> ${escapeHtml(res.redFlags)}</div>
+                </div>
+            `;
+        }
+
         resultEl.innerHTML = `
             <div class="space-y-4">
+                ${redFlagHtml}
+
                 <!-- Главная карточка: Единственный лучший ход -->
                 <div class="bg-gradient-to-b from-rose-950/40 via-slate-900/90 to-slate-900 border ${borderColor} rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
                         <div class="flex items-center gap-2">
                             <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
                             <span class="text-xs font-black uppercase tracking-widest text-white">${headline}</span>
                         </div>
-                        <span class="text-[10px] px-2.5 py-0.5 rounded-full ${badgeStyle} font-bold border">
-                            ${res.stepsToTaboo === 0 ? '0 шагов' : `~${res.stepsToTaboo || 1} ш. до табу`}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            ${timingHtml}
+                            <span class="text-[10px] px-2.5 py-1 rounded-full ${badgeStyle} font-bold border">
+                                ${res.stepsToTaboo === 0 ? '0 шагов' : `~${res.stepsToTaboo || 1} ш. до табу`}
+                            </span>
+                        </div>
                     </div>
 
                     <!-- Текст хода (клик копирует чистый текст) -->
@@ -426,6 +502,39 @@ window.EmanuelOS = {
         `;
 
         if (window.lucide) lucide.createIcons();
+    },
+
+    async handleProfilePhotoSelect(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const base64 = event.target.result;
+            if (window.showNotification) showNotification('Сканирую анкету девушки...', 'info');
+
+            try {
+                const res = await callEmanuelApi({
+                    action: 'emanuel_analyzeProfile',
+                    sessionId: this.currentSessionId,
+                    imageBase64: base64,
+                    girlName: this.currentSession?.name || 'Девушка'
+                });
+
+                if (res && res.success && res.profile) {
+                    if (!this.currentSession.profile) this.currentSession.profile = {};
+                    Object.assign(this.currentSession.profile, res.profile);
+                    this.updateDossierUI(this.currentSession);
+                    if (window.showNotification) showNotification('Анкета распознана и сохранена в досье! ✨', 'success');
+                } else {
+                    if (window.showNotification) showNotification('Не удалось распознать анкету', 'error');
+                }
+            } catch (err) {
+                console.error('Profile photo error:', err);
+                if (window.showNotification) showNotification('Сбой анализа анкеты', 'error');
+            }
+        };
+        reader.readAsDataURL(file);
     },
 
     copyCurrentAdvice() {

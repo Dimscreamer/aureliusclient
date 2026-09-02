@@ -1,8 +1,11 @@
 /**
- * 🧠 Emanuel_AI.js — OpenRouter & Gemini Integration с JSON-контрактом
+ * 🧠 Emanuel_AI.js — OpenRouter & Gemini Integration с JSON-контрактом, Vision Batching и Profile Analysis
  */
 const axios = require('axios');
 const { EMANUEL_CONFIG } = require('./Emanuel_Config');
+
+// Регулярное выражение для очистки эмодзи из реплики мужчины
+const EMOJI_REGEX = /[\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/gu;
 
 class EmanuelAI {
     constructor() {
@@ -21,13 +24,17 @@ class EmanuelAI {
         const currentState = params.currentState || 'BUILD';
         const fastTrack = !!params.fastTrack;
         const isAlternative = !!params.isAlternative;
+        const profile = params.profile || null;
+        const dossier = params.dossier || null;
 
         const systemPrompt = EMANUEL_CONFIG.getSystemPrompt({
             girlName,
             sessionId,
             currentState,
             fastTrack,
-            isAlternative
+            isAlternative,
+            profile,
+            dossier
         });
 
         const messages = [
@@ -51,12 +58,22 @@ class EmanuelAI {
         if (params.text) {
             promptPrefix += `[Сообщение девушки]: "${params.text}"`;
         } else {
-            promptPrefix += `[Скриншот переписки девушки]`;
+            promptPrefix += `[Скриншот(ы) переписки девушки]`;
         }
 
         currentContent.push({ type: 'text', text: promptPrefix });
 
-        if (params.imageBase64) {
+        // Поддержка нескольких скриншотов одновременно (Multi-image vision)
+        if (params.images && Array.isArray(params.images)) {
+            params.images.forEach(img => {
+                if (img) {
+                    currentContent.push({
+                        type: 'image_url',
+                        image_url: { url: img }
+                    });
+                }
+            });
+        } else if (params.imageBase64) {
             currentContent.push({
                 type: 'image_url',
                 image_url: { url: params.imageBase64 }
@@ -98,7 +115,7 @@ class EmanuelAI {
             }
             return {
                 success: false,
-                reply: '⚠️ Не удалось получить ответ от ИИ.',
+                reply: 'Не удалось получить ответ от ИИ.',
                 reason: 'Пустой ответ модели',
                 durationMs: durationMs
             };
@@ -108,7 +125,7 @@ class EmanuelAI {
             const errDetail = err.response?.data?.error?.message || err.message;
             return {
                 success: false,
-                reply: `⚠️ Ошибка ИИ (${err.response?.status || 'Network'}): ${errDetail}`,
+                reply: `Ошибка ИИ (${err.response?.status || 'Network'}): ${errDetail}`,
                 reason: errDetail,
                 durationMs: durationMs
             };
@@ -116,12 +133,61 @@ class EmanuelAI {
     }
 
     /**
-     * Безопасный парсинг JSON ответа от модели
+     * Анализ скриншотов анкеты/профиля девушки (Tinder/Twinby/Pure/Instagram)
+     */
+    async analyzeProfileScreenshots(imageUrls, girlName) {
+        const apiKey = EMANUEL_CONFIG.OPENROUTER_KEY;
+        if (!apiKey) throw new Error('OPENROUTER_KEY не настроен');
+
+        const systemPrompt = EMANUEL_CONFIG.getProfileAnalysisPrompt(girlName);
+        const userContent = [{ type: 'text', text: `Анализ профиля/анкеты девушки «${girlName}» по прикрепленным скриншотам:` }];
+
+        const images = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+        images.forEach(img => {
+            if (img) userContent.push({ type: 'image_url', image_url: { url: img } });
+        });
+
+        const payload = {
+            model: EMANUEL_CONFIG.AI_MODEL,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userContent }
+            ],
+            temperature: 0.4,
+            max_tokens: 1200,
+            response_format: { type: "json_object" }
+        };
+
+        const headers = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://aureliusclients.web.app',
+            'X-Title': 'Emanuel Profile Vision'
+        };
+
+        try {
+            const res = await axios.post(this.apiUrl, payload, { headers, timeout: 25000 });
+            if (res.data?.choices && res.data.choices.length > 0) {
+                let raw = res.data.choices[0].message.content.trim();
+                if (raw.startsWith('```')) {
+                    raw = raw.replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+                }
+                const parsed = JSON.parse(raw);
+                return { success: true, profile: parsed };
+            }
+            return { success: false, error: 'Пустой ответ модели' };
+        } catch (e) {
+            console.error('Error analyzing profile:', e);
+            return { success: false, error: e.message };
+        }
+    }
+
+    /**
+     * Безопасный парсинг JSON ответа от модели с фильтрацией эмодзи
      */
     parseJsonSafe(rawContent, girlName) {
         let jsonStr = rawContent.trim();
 
-        // Очистка от ```json ... ``` если модель завернула
         if (jsonStr.startsWith('```')) {
             jsonStr = jsonStr.replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
         }
@@ -131,24 +197,34 @@ class EmanuelAI {
             const state = obj.state || 'BUILD';
             const stepsToTaboo = typeof obj.steps_to_taboo === 'number' ? obj.steps_to_taboo : (state === 'READY_FOR_TABU' ? 0 : 1);
             const nextAction = obj.next_action || (stepsToTaboo === 0 ? 'ASK_TABU' : 'BUILD_COMFORT');
-            const reply = String(obj.reply || '').trim();
+            
+            // Фильтруем эмодзи из реплики мужчины
+            let rawReply = String(obj.reply || '').trim();
+            let cleanReply = rawReply.replace(EMOJI_REGEX, '').replace(/\s{2,}/g, ' ').trim();
+
             const reason = String(obj.reason || '').trim();
+            const timingAdvice = obj.timing_advice ? String(obj.timing_advice).trim() : 'Пауза: 25-40 минут, держи баланс значимости';
+            const redFlags = obj.red_flags ? String(obj.red_flags).trim() : null;
+            const dossierUpdates = obj.dossier_updates || { taboos: [], green_flags: [], date_style: null };
             const confidence = typeof obj.confidence === 'number' ? obj.confidence : 0.85;
 
             return {
                 state,
                 stepsToTaboo,
                 nextAction,
-                reply,
+                reply: cleanReply,
                 reason,
+                timingAdvice,
+                redFlags,
+                dossierUpdates,
                 confidence,
                 rawJson: obj
             };
         } catch (e) {
             console.warn('Fallback JSON parse error:', e.message, 'Raw:', rawContent);
-            // Fallback если JSON сбит
             const replyMatch = rawContent.match(/"reply"\s*:\s*"([^"]+)"/);
-            const reply = replyMatch ? replyMatch[1] : rawContent.replace(/[{}"\\]/g, '').trim();
+            let reply = replyMatch ? replyMatch[1] : rawContent.replace(/[{}"\\]/g, '').trim();
+            reply = reply.replace(EMOJI_REGEX, '').trim();
 
             return {
                 state: 'BUILD',
@@ -156,6 +232,9 @@ class EmanuelAI {
                 nextAction: 'BUILD_COMFORT',
                 reply: reply,
                 reason: 'Определено через fallback парсер',
+                timingAdvice: 'Пауза: 30 минут',
+                redFlags: null,
+                dossierUpdates: { taboos: [], green_flags: [], date_style: null },
                 confidence: 0.7
             };
         }
@@ -203,7 +282,6 @@ class EmanuelAI {
             return { success: false, items: [], summary: 'Нет данных' };
         } catch (e) {
             console.error('LeadMe AI error:', e.message);
-            // Умный локальный fallback, если OpenRouter не ответил
             const items = sessionsSummary.slice(0, 3).map(s => ({
                 sessionId: s.id,
                 name: s.name,

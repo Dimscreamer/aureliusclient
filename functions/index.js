@@ -990,6 +990,17 @@ ${transcript}`;
             return res.json({ success: true });
         }
 
+        if (data.action === 'emanuel_analyzeProfile') {
+            const { AI, Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const sessionId = data.sessionId;
+            const resAnalysis = await AI.analyzeProfileScreenshots(data.imageBase64, data.girlName || 'Девушка');
+            if (resAnalysis.success && resAnalysis.profile && sessionId) {
+                await Database.updateSessionProfile(db, userId, sessionId, resAnalysis.profile);
+            }
+            return res.json(resAnalysis);
+        }
+
         if (data.action === 'emanuel_generateAdvice') {
             const { AI, Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
@@ -1006,6 +1017,8 @@ ${transcript}`;
                 imageBase64: data.imageBase64 || null,
                 fastTrack: !!data.fastTrack,
                 isAlternative: !!data.isAlternative,
+                profile: activeSession.profile || null,
+                dossier: activeSession.dossier || null,
                 userSettings: userSettings,
                 dialogHistory: history
             });
@@ -1016,6 +1029,9 @@ ${transcript}`;
                     stepsToTaboo: result.stepsToTaboo,
                     nextAction: result.nextAction,
                     reason: result.reason,
+                    timingAdvice: result.timingAdvice,
+                    redFlags: result.redFlags,
+                    dossierUpdates: result.dossierUpdates,
                     confidence: result.confidence
                 });
             }
@@ -1153,3 +1169,17 @@ exports.emanuelWebhook = onRequest({ cors: true, maxInstances: 10, memory: '512M
         res.status(500).send('Error');
     }
 });
+
+// Вечерний радар Emanuel (Scheduler в 18:30 Europe/Kyiv)
+exports.sendEmanuelEveningRadar = onSchedule(
+    { schedule: "30 18 * * *", timeZone: TIMEZONE, region: "europe-west1" },
+    async () => {
+        try {
+            const { handleLeadMe } = require("./emanuel/Emanuel_Kernel");
+            await handleLeadMe(CONFIG.ADMIN_CHAT_ID, CONFIG.ADMIN_CHAT_ID, db);
+            console.log("Emanuel Evening Radar sent successfully.");
+        } catch (e) {
+            console.error("Emanuel Evening Radar Error:", e);
+        }
+    }
+);

@@ -107,6 +107,14 @@ class EmanuelDatabase {
             nextAction: 'BUILD_COMFORT',
             lastReply: '',
             reason: '',
+            lastTimingAdvice: null,
+            lastRedFlags: null,
+            profile: null,
+            dossier: {
+                taboos: [],
+                greenFlags: [],
+                dateStyle: null
+            },
             turnsCount: 0,
             lastMessage: '',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -123,6 +131,26 @@ class EmanuelDatabase {
 
         await batch.commit();
         return newSession;
+    }
+
+    async updateSessionProfile(db, userId, sessionId, profileData) {
+        const uId = String(userId || '451682370');
+        const sId = String(sessionId);
+        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set({
+            profile: profileData,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return true;
+    }
+
+    async updateSessionDossier(db, userId, sessionId, dossierData) {
+        const uId = String(userId || '451682370');
+        const sId = String(sessionId);
+        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set({
+            dossier: dossierData,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return true;
     }
 
     async switchSession(db, userId, sessionId) {
@@ -222,8 +250,29 @@ class EmanuelDatabase {
             reason: meta.reason || '',
             stepsToTaboo: meta.stepsToTaboo ?? 1,
             nextAction: meta.nextAction || 'BUILD_COMFORT',
+            timingAdvice: meta.timingAdvice || null,
+            redFlags: meta.redFlags || null,
             timestamp: admin.firestore.FieldValue.serverTimestamp()
         });
+
+        // Получаем текущие данные для мерджа досье
+        const sessionRef = db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId);
+        const currentDoc = await sessionRef.get();
+        const currentData = currentDoc.exists ? currentDoc.data() : {};
+        const curDossier = currentData.dossier || { taboos: [], greenFlags: [], dateStyle: null };
+
+        // Мерджим обновления досье
+        if (meta.dossierUpdates) {
+            if (Array.isArray(meta.dossierUpdates.taboos) && meta.dossierUpdates.taboos.length) {
+                curDossier.taboos = Array.from(new Set([...(curDossier.taboos || []), ...meta.dossierUpdates.taboos]));
+            }
+            if (Array.isArray(meta.dossierUpdates.green_flags) && meta.dossierUpdates.green_flags.length) {
+                curDossier.greenFlags = Array.from(new Set([...(curDossier.greenFlags || []), ...meta.dossierUpdates.green_flags]));
+            }
+            if (meta.dossierUpdates.date_style) {
+                curDossier.dateStyle = meta.dossierUpdates.date_style;
+            }
+        }
 
         const updateData = {
             lastMessage: String(girlText || '').substring(0, 100),
@@ -232,12 +281,15 @@ class EmanuelDatabase {
             stepsToTaboo: typeof meta.stepsToTaboo === 'number' ? meta.stepsToTaboo : 1,
             nextAction: meta.nextAction || 'BUILD_COMFORT',
             reason: meta.reason || '',
+            lastTimingAdvice: meta.timingAdvice || null,
+            lastRedFlags: meta.redFlags || null,
+            dossier: curDossier,
             confidence: meta.confidence || 0.85,
             turnsCount: admin.firestore.FieldValue.increment(1),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
-        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set(updateData, { merge: true });
+        await sessionRef.set(updateData, { merge: true });
     }
 
     async getHistory(db, userId, sessionId, maxTurns = 12) {
