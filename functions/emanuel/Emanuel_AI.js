@@ -87,6 +87,7 @@ class EmanuelAI {
             messages: messages,
             temperature: EMANUEL_CONFIG.TEMPERATURE,
             max_tokens: EMANUEL_CONFIG.MAX_TOKENS,
+            reasoning: { max_tokens: 350 },
             response_format: { type: "json_object" }
         };
 
@@ -104,7 +105,7 @@ class EmanuelAI {
 
             if (res.data?.choices && res.data.choices.length > 0) {
                 const rawContent = res.data.choices[0].message.content;
-                const parsed = this.parseJsonSafe(rawContent, girlName);
+                const parsed = this.parseJsonSafe(rawContent, girlName, currentState);
 
                 return {
                     success: true,
@@ -150,7 +151,7 @@ class EmanuelAI {
         const payload = {
             model: EMANUEL_CONFIG.AI_MODEL,
             messages: [
-                { role: 'system', content: systemPrompt },
+                { role: 'system', systemPrompt },
                 { role: 'user', content: userContent }
             ],
             temperature: 0.4,
@@ -169,8 +170,10 @@ class EmanuelAI {
             const res = await axios.post(this.apiUrl, payload, { headers, timeout: 25000 });
             if (res.data?.choices && res.data.choices.length > 0) {
                 let raw = res.data.choices[0].message.content.trim();
-                if (raw.startsWith('```')) {
-                    raw = raw.replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+                const firstBrace = raw.indexOf('{');
+                const lastBrace = raw.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace > firstBrace) {
+                    raw = raw.substring(firstBrace, lastBrace + 1);
                 }
                 const parsed = JSON.parse(raw);
                 return { success: true, profile: parsed };
@@ -183,27 +186,34 @@ class EmanuelAI {
     }
 
     /**
-     * Безопасный парсинг JSON ответа от модели с фильтрацией эмодзи
+     * Безопасный парсинг JSON ответа от модели с фильтрацией эмодзи и защитой от обрезки
      */
-    parseJsonSafe(rawContent, girlName) {
-        let jsonStr = rawContent.trim();
+    parseJsonSafe(rawContent, girlName, currentState = 'BUILD') {
+        let jsonStr = String(rawContent || '').trim();
 
-        if (jsonStr.startsWith('```')) {
+        // Извлекаем строго внешний JSON объект между { и }
+        const firstBrace = jsonStr.indexOf('{');
+        const lastBrace = jsonStr.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+        } else if (jsonStr.startsWith('```')) {
             jsonStr = jsonStr.replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
         }
 
         try {
             const obj = JSON.parse(jsonStr);
-            const state = obj.state || 'BUILD';
-            const stepsToTaboo = typeof obj.steps_to_taboo === 'number' ? obj.steps_to_taboo : (state === 'READY_FOR_TABU' ? 0 : 1);
-            const nextAction = obj.next_action || (stepsToTaboo === 0 ? 'ASK_TABU' : 'BUILD_COMFORT');
+            const state = obj.state || currentState || 'BUILD';
+            const stepsToTaboo = typeof obj.steps_to_taboo === 'number' 
+                ? obj.steps_to_taboo 
+                : (state === 'READY_FOR_TABU' || state === 'DATE_CLOSING' ? 0 : 1);
+            const nextAction = obj.next_action || (state === 'DATE_CLOSING' ? 'CLOSE_DATE' : (stepsToTaboo === 0 ? 'ASK_TABU' : 'BUILD_COMFORT'));
             
             // Фильтруем эмодзи из реплики мужчины
             let rawReply = String(obj.reply || '').trim();
             let cleanReply = rawReply.replace(EMOJI_REGEX, '').replace(/\s{2,}/g, ' ').trim();
 
             const reason = String(obj.reason || '').trim();
-            const timingAdvice = obj.timing_advice ? String(obj.timing_advice).trim() : 'Пауза: 25-40 минут, держи баланс значимости';
+            const timingAdvice = obj.timing_advice ? String(obj.timing_advice).trim() : 'Отвечай сразу, пока она на связи';
             const redFlags = obj.red_flags ? String(obj.red_flags).trim() : null;
             const dossierUpdates = obj.dossier_updates || { taboos: [], green_flags: [], date_style: null };
             const confidence = typeof obj.confidence === 'number' ? obj.confidence : 0.85;
@@ -221,21 +231,55 @@ class EmanuelAI {
                 rawJson: obj
             };
         } catch (e) {
-            console.warn('Fallback JSON parse error:', e.message, 'Raw:', rawContent);
-            const replyMatch = rawContent.match(/"reply"\s*:\s*"([^"]+)"/);
-            let reply = replyMatch ? replyMatch[1] : rawContent.replace(/[{}"\\]/g, '').trim();
+            console.warn('Fallback JSON parse triggered:', e.message, 'Raw:', rawContent);
+
+            // Регулярные выражения для надежного извлечения полей
+            let replyMatch = rawContent.match(/"reply"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+            let reply = replyMatch ? replyMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : '';
+
+            // Если кавычка не закрыта (обрыв стриминга/токенов)
+            if (!reply) {
+                const unclosed = rawContent.match(/"reply"\s*:\s*"([^"\r\n]+)/);
+                if (unclosed && unclosed[1].trim().length > 5) {
+                    reply = unclosed[1].trim();
+                }
+            }
+
+            const stateMatch = rawContent.match(/"state"\s*:\s*"([A-Z_]+)"/);
+            const detectedState = stateMatch ? stateMatch[1] : currentState || 'BUILD';
+
+            const actionMatch = rawContent.match(/"next_action"\s*:\s*"([A-Z_]+)"/);
+            const detectedAction = actionMatch ? actionMatch[1] : (detectedState === 'DATE_CLOSING' ? 'CLOSE_DATE' : 'BUILD_COMFORT');
+
+            const reasonMatch = rawContent.match(/"reason"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+            const detectedReason = reasonMatch ? reasonMatch[1].trim() : 'Развитие диалога и конкретика по встрече.';
+
+            const timingMatch = rawContent.match(/"timing_advice"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+            const detectedTiming = timingMatch ? timingMatch[1].trim() : 'Отвечай сразу, пока она на связи';
+
+            // Если reply всё равно поврежден или содержит технические ключи (например, "Для", "state:"):
+            if (!reply || reply.length < 5 || reply.includes('state:') || reply.includes('next_action:') || reply.includes('steps_to_taboo:')) {
+                if (detectedState === 'DATE_CLOSING' || detectedAction === 'CLOSE_DATE') {
+                    reply = 'Для начала встретимся, выпьем кофе или вина в приятном месте, пообщаемся вживую, а там посмотрим. Как ты на это смотришь?';
+                } else if (detectedState === 'READY_FOR_TABU' || detectedAction === 'ASK_TABU') {
+                    reply = 'Мне нравится открытость. А у тебя есть вещи, которые для тебя категорически табу, или наоборот то, что особенно заводит?';
+                } else {
+                    reply = 'Посмотрим по настроению в процессе. Главное, чтобы обоим было комфортно и легко.';
+                }
+            }
+
             reply = reply.replace(EMOJI_REGEX, '').trim();
 
             return {
-                state: 'BUILD',
-                stepsToTaboo: 1,
-                nextAction: 'BUILD_COMFORT',
+                state: detectedState,
+                stepsToTaboo: detectedState === 'DATE_CLOSING' ? 0 : 1,
+                nextAction: detectedAction,
                 reply: reply,
-                reason: 'Определено через fallback парсер',
-                timingAdvice: 'Пауза: 30 минут',
+                reason: detectedReason,
+                timingAdvice: detectedTiming,
                 redFlags: null,
                 dossierUpdates: { taboos: [], green_flags: [], date_style: null },
-                confidence: 0.7
+                confidence: 0.8
             };
         }
     }

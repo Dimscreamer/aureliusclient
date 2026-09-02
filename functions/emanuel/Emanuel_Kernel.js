@@ -654,10 +654,14 @@ async function processTextInput(chatId, userId, sessionId, text, fastTrack = fal
  */
 async function sendAdviceToUser(chatId, userId, active, result, inputText, db, fastTrack = false, isAlternative = false) {
     let headerLabel = isAlternative ? '🔄 <b>Альтернативный ход:</b>' : '🔞 <b>Следующий ход:</b>';
-    if (result.stepsToTaboo === 0 || result.state === 'READY_FOR_TABU') {
+    if (result.nextAction === 'CLOSE_DATE' || result.state === 'DATE_CLOSING') {
+        headerLabel = '🎯 <b>Ход: Назначение встречи:</b>';
+    } else if (result.nextAction === 'ASK_TABU' || result.state === 'READY_FOR_TABU') {
         headerLabel = '🔥 <b>Ход: Вопрос о сексуальных табу:</b>';
-    } else if (result.state === 'DATE_CLOSING') {
-        headerLabel = '🎯 <b>Ход: Закрытие на встречу:</b>';
+    } else if (result.state === 'INCOMPATIBLE') {
+        headerLabel = '❄️ <b>Ход: Завершение (несовместимы):</b>';
+    } else {
+        headerLabel = '🔞 <b>Следующий ход:</b>';
     }
 
     const escapedName = Telegram.escapeHtml(active.name);

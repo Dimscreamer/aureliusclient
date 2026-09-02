@@ -11,7 +11,7 @@ const EMANUEL_CONFIG = {
     AI_MODEL: "google/gemini-2.5-flash",
     WEB_APP_URL: "https://aureliusclients.web.app/emanuel_app.html",
     TEMPERATURE: 0.65,
-    MAX_TOKENS: 1400,
+    MAX_TOKENS: 2000,
 
     /**
      * Системный промпт со строгим JSON-контрактом, анти-смайлами и калибровкой тайминга
