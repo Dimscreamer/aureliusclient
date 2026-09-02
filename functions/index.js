@@ -887,41 +887,75 @@ ${transcript}`;
         // ==============================================================================
         // 🔥 EMANUEL DATING OS (WINGMAN) ACTIONS
         // ==============================================================================
-        if (data.action === 'emanuel_getSlots') {
+        if (data.action === 'emanuel_getSessions' || data.action === 'emanuel_getSlots') {
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const slots = await Database.getSlots(db, userId);
-            const activeSlot = await Database.getActiveSlot(db, userId);
+            const sessions = await Database.getSessions(db, userId);
+            const activeSession = await Database.getActiveSession(db, userId);
             const settings = await Database.getUserSettings(db, userId);
-            return res.json({ success: true, slots, activeSlot, settings });
+            return res.json({ success: true, sessions, activeSession, settings, slots: sessions, activeSlot: activeSession });
         }
 
-        if (data.action === 'emanuel_switchSlot') {
+        if (data.action === 'emanuel_createSession') {
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const slot = await Database.switchSlot(db, userId, data.slotId);
-            return res.json({ success: true, slot });
+            const session = await Database.createSession(db, userId, data.name);
+            return res.json({ success: true, session });
         }
 
-        if (data.action === 'emanuel_renameSlot') {
+        if (data.action === 'emanuel_switchSession' || data.action === 'emanuel_switchSlot') {
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const slot = await Database.renameActiveSlot(db, userId, data.name, data.platform);
-            return res.json({ success: true, slot });
+            const sessionId = data.sessionId || data.slotId;
+            const session = await Database.switchSession(db, userId, sessionId);
+            return res.json({ success: true, session, slot: session });
         }
 
-        if (data.action === 'emanuel_clearSlot') {
+        if (data.action === 'emanuel_renameSession' || data.action === 'emanuel_renameSlot') {
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            await Database.clearSlotHistory(db, userId, data.slotId);
+            const sessionId = data.sessionId || data.slotId;
+            await Database.renameSession(db, userId, sessionId, data.name);
+            return res.json({ success: true });
+        }
+
+        if (data.action === 'emanuel_deleteSession') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            await Database.deleteSession(db, userId, data.sessionId);
+            return res.json({ success: true });
+        }
+
+        if (data.action === 'emanuel_clearSession' || data.action === 'emanuel_clearSlot') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const sessionId = data.sessionId || data.slotId;
+            await Database.clearSessionHistory(db, userId, sessionId);
             return res.json({ success: true });
         }
 
         if (data.action === 'emanuel_getHistory') {
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const history = await Database.getHistory(db, userId, data.slotId, data.limit || 15);
+            const sessionId = data.sessionId || data.slotId;
+            const history = await Database.getHistory(db, userId, sessionId, data.limit || 15);
             return res.json({ success: true, history });
+        }
+
+        if (data.action === 'emanuel_leadMe') {
+            const { AI, Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const sessions = await Database.getSessions(db, userId);
+            const summary = sessions.map(s => ({
+                name: s.name,
+                mode: s.mode || 'SEX',
+                stepsToTaboo: s.stepsToTaboo,
+                tactic: s.tactic,
+                lastGist: s.lastGist || '',
+                turnsCount: s.turnsCount || 0
+            }));
+            const analysis = await AI.generateLeadMeAnalysis(summary);
+            return res.json(analysis);
         }
 
         if (data.action === 'emanuel_getSettings') {
@@ -938,23 +972,26 @@ ${transcript}`;
             return res.json({ success: true });
         }
 
-        if (data.action === 'emanuel_setSlotMode') {
+        if (data.action === 'emanuel_setSessionMode' || data.action === 'emanuel_setSlotMode') {
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const mode = await Database.setSlotMode(db, userId, data.slotId, data.mode);
+            const sessionId = data.sessionId || data.slotId;
+            const mode = await Database.setSessionMode(db, userId, sessionId, data.mode);
             return res.json({ success: true, mode });
         }
 
         if (data.action === 'emanuel_generateAdvice') {
             const { AI, Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const activeSlot = await Database.getActiveSlot(db, userId);
+            const activeSession = await Database.getActiveSession(db, userId);
             const userSettings = data.settings || (await Database.getUserSettings(db, userId));
-            const history = await Database.getHistory(db, userId, activeSlot.id, 8);
-            const mode = data.mode || activeSlot.mode || 'SEX';
+            const sessionId = data.sessionId || activeSession.id;
+            const history = await Database.getHistory(db, userId, sessionId, 8);
+            const mode = data.mode || activeSession.mode || 'SEX';
 
             const result = await AI.generateAdvice({
                 text: data.text || '',
+                girlName: activeSession.name,
                 imageBase64: data.imageBase64 || null,
                 mode: mode,
                 fastTrack: !!data.fastTrack,
@@ -963,7 +1000,7 @@ ${transcript}`;
             });
 
             if (result.success && data.saveToHistory) {
-                await Database.addTurn(db, userId, activeSlot.id, data.text || '[Скриншот]', result.content, result.gist, {
+                await Database.addTurn(db, userId, sessionId, data.text || '[Скриншот]', result.content, result.gist, {
                     stepsToTaboo: result.stepsToTaboo,
                     tactic: result.tactic,
                     compatibilityRadar: result.compatibilityRadar

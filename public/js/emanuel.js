@@ -1,18 +1,39 @@
 /**
- * 💋 Emanuel Dating OS Controller (SEX MODE & Compatibility Focus)
+ * 💋 Emanuel Dating OS Controller (Multi-Session & Lead Me Engine)
+ * Платформы ПОЛНОСТЬЮ УДАЛЕНЫ. Фокус на TIME TO COMPATIBILITY и N-сессиях.
  */
+
+// Автономный, надежный транспорт API вызовов (устраняет ошибку "TypeError: window.apiFetch is not a function")
+async function callEmanuelApi(data) {
+    const isHosted = typeof window !== 'undefined' && 
+        (window.location.origin.includes('web.app') || window.location.origin.includes('firebaseapp.com'));
+    const url = isHosted ? '/api' : 'https://api-lzh3pje5pa-uc.a.run.app';
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+
+    if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}: ${errText || 'Сбой сервера'}`);
+    }
+    return await res.json();
+}
+window.apiFetch = callEmanuelApi;
+
 window.EmanuelOS = {
-    currentSlotId: '1',
-    slots: [],
+    currentSessionId: 'session_1',
+    sessions: [],
     settings: {
-        mode: 'SEX',
-        platform: 'Tinder'
+        mode: 'SEX'
     },
     attachedPhotoBase64: null,
     isGenerating: false,
 
     async init() {
-        console.log('🔞 Emanuel OS Initializing (SEX MODE Architecture)...');
+        console.log('🔞 Emanuel OS Initializing (Multi-Session Architecture)...');
         this.bindEvents();
         await this.loadData();
     },
@@ -36,35 +57,30 @@ window.EmanuelOS = {
 
     async loadData() {
         try {
-            const res = await window.apiFetch({
-                action: 'emanuel_getSlots'
+            const res = await callEmanuelApi({
+                action: 'emanuel_getSessions'
             });
 
             if (res && res.success) {
-                this.slots = res.slots || [];
-                const active = res.activeSlot || this.slots[0];
-                this.currentSlotId = active ? String(active.id) : '1';
+                this.sessions = res.sessions || res.slots || [];
+                const active = res.activeSession || res.activeSlot || this.sessions[0];
+                this.currentSessionId = active ? String(active.id) : 'session_1';
                 this.settings = res.settings || this.settings;
 
-                this.renderSlots();
-                this.updateActiveSlotHeader(active);
-                this.renderSettings();
+                this.renderSessions();
+                this.updateActiveSessionHeader(active);
                 await this.loadHistory();
             }
         } catch (e) {
             console.error('Error loading Emanuel data:', e);
-            if (window.showNotification) showNotification('Ошибка загрузки данных Emanuel', 'error');
+            if (window.showNotification) showNotification('Ошибка подключения к Emanuel OS: ' + e.message, 'error');
         }
     },
 
-    updateActiveSlotHeader(active) {
+    updateActiveSessionHeader(active) {
         const titleEl = document.getElementById('emanuel-current-girl-title');
-        const badgeEl = document.getElementById('emanuel-active-platform-badge');
         if (titleEl && active) {
             titleEl.textContent = `${active.name}`;
-        }
-        if (badgeEl && active) {
-            badgeEl.textContent = active.platform || 'Tinder';
         }
 
         // Обновляем режим в кнопках шапки
@@ -119,7 +135,7 @@ window.EmanuelOS = {
             stepsText.innerHTML = '⚡ Дистанция: ~1 шаг до табу';
         } else {
             stepsBadge.className = 'px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-extrabold text-sm flex items-center gap-2';
-            stepsText.innerHTML = '🧊 Дистанция: ~2 шага до табу';
+            stepsText.innerHTML = `🧊 Дистанция: ~${s} шага до табу`;
         }
 
         if (tacticText) {
@@ -136,9 +152,9 @@ window.EmanuelOS = {
     async setMode(mode) {
         try {
             this.updateModeUI(mode);
-            await window.apiFetch({
-                action: 'emanuel_setSlotMode',
-                slotId: this.currentSlotId,
+            await callEmanuelApi({
+                action: 'emanuel_setSessionMode',
+                sessionId: this.currentSessionId,
                 mode: mode
             });
             if (window.showNotification) showNotification(`Режим переключен на ${mode} MODE`, 'info');
@@ -148,41 +164,40 @@ window.EmanuelOS = {
         }
     },
 
-    renderSlots() {
+    renderSessions() {
         const container = document.getElementById('emanuel-slots-list');
         if (!container) return;
 
-        container.innerHTML = this.slots.map(slot => {
-            const isActive = String(slot.id) === String(this.currentSlotId);
+        container.innerHTML = this.sessions.map((s, idx) => {
+            const isActive = String(s.id) === String(this.currentSessionId);
             const activeBg = isActive 
                 ? 'bg-rose-500/20 border-rose-500/50 shadow-md shadow-rose-500/10' 
                 : 'bg-white/5 border-white/5 hover:bg-white/10';
 
-            const stepsBadge = slot.stepsToTaboo === 0
+            const stepsBadge = s.stepsToTaboo === 0
                 ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold">0 шагов</span>`
-                : `<span class="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 text-[10px] font-bold">~${slot.stepsToTaboo || 1} ш.</span>`;
+                : `<span class="px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-400 text-[10px] font-bold">~${s.stepsToTaboo || 1} ш.</span>`;
 
             return `
                 <div class="p-3 rounded-xl border ${activeBg} transition flex items-center justify-between cursor-pointer group"
-                     onclick="window.EmanuelOS.switchSlot('${slot.id}')">
+                     onclick="window.EmanuelOS.switchSession('${s.id}')">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="w-8 h-8 rounded-lg ${isActive ? 'bg-rose-500 text-white' : 'bg-white/10 text-slate-400'} flex items-center justify-center font-bold text-xs flex-shrink-0">
-                            ${slot.id}
+                            ${idx + 1}
                         </div>
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
-                                <span class="font-bold text-xs text-white truncate">${escapeHtml(slot.name)}</span>
-                                <span class="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400">${slot.platform || 'Tinder'}</span>
+                                <span class="font-bold text-xs text-white truncate">${escapeHtml(s.name)}</span>
                             </div>
                             <div class="text-[10px] text-slate-400 truncate mt-0.5">
-                                Режим: <b class="text-rose-400">${slot.mode || 'SEX'}</b> • ${slot.turnsCount || 0} реплик
+                                Режим: <b class="text-rose-400">${s.mode || 'SEX'}</b> • ${s.turnsCount || 0} реплик
                             </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
                         ${stepsBadge}
-                        <button onclick="event.stopPropagation(); window.EmanuelOS.clearSlot('${slot.id}')" 
-                                class="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition" title="Очистить память">
+                        <button onclick="event.stopPropagation(); window.EmanuelOS.deleteSession('${s.id}', '${escapeHtml(s.name)}')" 
+                                class="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition" title="Удалить диалог">
                             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         </button>
                     </div>
@@ -193,56 +208,55 @@ window.EmanuelOS = {
         if (window.lucide) lucide.createIcons();
     },
 
-    async switchSlot(slotId) {
-        if (String(slotId) === String(this.currentSlotId)) return;
-        this.currentSlotId = String(slotId);
+    async promptNewGirl() {
+        const name = prompt('Введи имя девушки для нового диалога:');
+        if (!name || !name.trim()) return;
+
         try {
-            const res = await window.apiFetch({
-                action: 'emanuel_switchSlot',
-                slotId: this.currentSlotId
+            const res = await callEmanuelApi({
+                action: 'emanuel_createSession',
+                name: name.trim()
             });
             if (res && res.success) {
-                const active = res.slot;
-                this.updateActiveSlotHeader(active);
-                this.renderSlots();
+                if (window.showNotification) showNotification(`Диалог с «${res.session.name}» создан!`, 'success');
+                await this.loadData();
+            }
+        } catch (e) {
+            console.error('Error creating session:', e);
+            if (window.showNotification) showNotification('Ошибка создания диалога', 'error');
+        }
+    },
+
+    async switchSession(sessionId) {
+        if (String(sessionId) === String(this.currentSessionId)) return;
+        this.currentSessionId = String(sessionId);
+        try {
+            const res = await callEmanuelApi({
+                action: 'emanuel_switchSession',
+                sessionId: this.currentSessionId
+            });
+            if (res && res.success) {
+                const active = res.session || res.slot;
+                this.updateActiveSessionHeader(active);
+                this.renderSessions();
                 await this.loadHistory();
             }
         } catch (e) {
-            console.error('Error switching slot:', e);
+            console.error('Error switching session:', e);
         }
     },
 
-    async clearSlot(slotId) {
-        if (!confirm('Очистить память переписки для этой девушки?')) return;
+    async deleteSession(sessionId, name) {
+        if (!confirm(`Удалить диалог с девушкой «${name}»?`)) return;
         try {
-            await window.apiFetch({
-                action: 'emanuel_clearSlot',
-                slotId: slotId
+            await callEmanuelApi({
+                action: 'emanuel_deleteSession',
+                sessionId: sessionId
             });
-            if (window.showNotification) showNotification('Память диалога очищена', 'success');
+            if (window.showNotification) showNotification('Диалог удален', 'success');
             await this.loadData();
         } catch (e) {
-            console.error('Error clearing slot:', e);
-        }
-    },
-
-    renderSettings() {
-        const platformEl = document.getElementById('emanuel-setting-platform');
-        if (platformEl && this.settings.platform) platformEl.value = this.settings.platform;
-    },
-
-    async saveSettings() {
-        const platformEl = document.getElementById('emanuel-setting-platform');
-        if (platformEl) this.settings.platform = platformEl.value;
-
-        try {
-            await window.apiFetch({
-                action: 'emanuel_saveSettings',
-                settings: this.settings
-            });
-            if (window.showNotification) showNotification('Настройки сохранены! 🔥', 'success');
-        } catch (e) {
-            console.error('Error saving settings:', e);
+            console.error('Error deleting session:', e);
         }
     },
 
@@ -301,11 +315,12 @@ window.EmanuelOS = {
         this.isGenerating = true;
 
         try {
-            const activeSlot = this.slots.find(s => String(s.id) === String(this.currentSlotId));
-            const mode = activeSlot?.mode || 'SEX';
+            const activeSession = this.sessions.find(s => String(s.id) === String(this.currentSessionId));
+            const mode = activeSession?.mode || 'SEX';
 
-            const res = await window.apiFetch({
+            const res = await callEmanuelApi({
                 action: 'emanuel_generateAdvice',
+                sessionId: this.currentSessionId,
                 text: text,
                 imageBase64: this.attachedPhotoBase64,
                 mode: mode,
@@ -322,11 +337,12 @@ window.EmanuelOS = {
                 await this.loadHistory();
                 await this.loadData();
             } else {
-                if (window.showNotification) showNotification(res.content || 'Ошибка генерации', 'error');
+                const errMsg = res?.content || res?.error || 'Ошибка генерации через сервер';
+                if (window.showNotification) showNotification(errMsg, 'error');
             }
         } catch (e) {
             console.error('Error in generateAdvice:', e);
-            if (window.showNotification) showNotification('Сбой запроса к ИИ', 'error');
+            if (window.showNotification) showNotification('Сбой запроса: ' + e.message, 'error');
         } finally {
             this.isGenerating = false;
             if (btn) {
@@ -464,21 +480,51 @@ window.EmanuelOS = {
         if (window.lucide) lucide.createIcons();
     },
 
+    async openLeadMeModal() {
+        const modal = document.getElementById('emanuel-leadme-modal');
+        const content = document.getElementById('emanuel-leadme-content');
+        if (!modal || !content) return;
+
+        modal.classList.remove('hidden');
+        content.innerHTML = `<div class="py-12 text-center text-xs text-slate-400 flex items-center justify-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin text-rose-500"></i> Сканирую все активные диалоги...</div>`;
+        if (window.lucide) lucide.createIcons();
+
+        try {
+            const res = await callEmanuelApi({ action: 'emanuel_leadMe' });
+            if (res && res.success) {
+                content.innerHTML = `
+                    <div class="text-xs text-slate-200 leading-relaxed space-y-3 font-sans">
+                        ${res.analysis.replace(/\n/g, '<br>')}
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<p class="text-red-400 text-xs">Не удалось загрузить сводку: ${res?.error || 'Ошибка'}</p>`;
+            }
+        } catch (e) {
+            content.innerHTML = `<p class="text-red-400 text-xs">Сбой запроса: ${e.message}</p>`;
+        }
+    },
+
+    closeLeadMeModal() {
+        const modal = document.getElementById('emanuel-leadme-modal');
+        if (modal) modal.classList.add('hidden');
+    },
+
     async loadHistory() {
         const container = document.getElementById('emanuel-chat-turns');
         if (!container) return;
 
         try {
-            const res = await window.apiFetch({
+            const res = await callEmanuelApi({
                 action: 'emanuel_getHistory',
-                slotId: this.currentSlotId
+                sessionId: this.currentSessionId
             });
 
             if (res && res.success && Array.isArray(res.history)) {
                 if (res.history.length === 0) {
                     container.innerHTML = `
                         <div class="text-center py-8 text-xs text-slate-500">
-                            История переписки с этой девушкой пуста.<br>Вставь первое сообщение девушки выше.
+                            История диалога пуста.<br>Вставь первое сообщение девушки выше.
                         </div>
                     `;
                     return;

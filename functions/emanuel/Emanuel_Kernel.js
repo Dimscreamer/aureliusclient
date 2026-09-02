@@ -1,5 +1,5 @@
 /**
- * 🚀 Emanuel_Kernel.js — Ядро диспетчеризации Emanuel Dating OS (SEX MODE Focus)
+ * 🚀 Emanuel_Kernel.js — Ядро диспетчеризации Emanuel Dating OS (Multi-Session & Lead Me)
  */
 const { EMANUEL_CONFIG } = require('./Emanuel_Config');
 const Telegram = require('./Emanuel_Telegram');
@@ -20,12 +20,12 @@ function isDuplicate(updateId) {
 }
 
 /**
- * Главная клавиатура Telegram с фокусом на SEX MODE и сокращение пути
+ * Главная клавиатура Telegram
  */
 async function getMainKeyboard(db, userId) {
-    const activeSlot = await Database.getActiveSlot(db, userId);
-    const mode = activeSlot?.mode || 'SEX';
-    const girlLabel = activeSlot ? `💃 ${activeSlot.name.substring(0, 16)}` : '💃 Мои диалоги';
+    const active = await Database.getActiveSession(db, userId);
+    const mode = active?.mode || 'SEX';
+    const girlLabel = active ? `👩 ${active.name}` : '👩 Мои диалоги';
 
     let modeIcon = '🔞';
     if (mode === 'NORMAL') modeIcon = '💬';
@@ -34,8 +34,8 @@ async function getMainKeyboard(db, userId) {
     return {
         keyboard: [
             [{ text: `${modeIcon} ${mode} MODE` }, { text: girlLabel }],
-            [{ text: '⚡ Быстрее к вопросу' }, { text: '🎯 DATE / Встреча' }],
-            [{ text: '➕ Новый диалог' }, { text: '⚙️ Режимы' }]
+            [{ text: '👩 Мои диалоги' }, { text: '🧭 Веди меня' }],
+            [{ text: '➕ Новая девушка' }, { text: '⚡ Быстрее к вопросу' }]
         ],
         resize_keyboard: true,
         is_persistent: true
@@ -43,21 +43,59 @@ async function getMainKeyboard(db, userId) {
 }
 
 /**
- * Меню переключения режимов
+ * Инлайн-клавиатура для ответа Emanuel
  */
-async function sendModeMenu(chatId, userId, db) {
-    const activeSlot = await Database.getActiveSlot(db, userId);
-    const msg =
-        `⚙️ <b>Выбери режим стратегии для «${activeSlot.name}»:</b>\n\n` +
-        `🔞 <b>SEX MODE (По умолчанию)</b> — Минимальное число шагов до вопроса о табу/границах. Быстрая проверка совместимости.\n\n` +
-        `💬 <b>NORMAL MODE</b> — Обычный Wingman для свободной беседы.\n\n` +
-        `🎯 <b>DATE MODE</b> — Совместимость подтверждена, только закрытие на реальную встречу.`;
+function getAdviceInlineKeyboard(session) {
+    const sId = session?.id || 'session_1';
+    return {
+        inline_keyboard: [
+            [
+                { text: '🔞 К вопросу', callback_data: `act_taboo_${sId}` },
+                { text: '⚡ Быстрее', callback_data: `act_fast_${sId}` },
+                { text: '🎯 К встрече', callback_data: `act_date_${sId}` }
+            ],
+            [
+                { text: '🔥 Смелее', callback_data: `act_bolder_${sId}` },
+                { text: '🎩 Мягче', callback_data: `act_softer_${sId}` },
+                { text: '🔄 Другой', callback_data: `act_regen_${sId}` }
+            ]
+        ]
+    };
+}
 
-    const inlineKeyboard = [
-        [{ text: '🔞 SEX MODE (Поиск табу)', callback_data: 'mode_SEX' }],
-        [{ text: '💬 NORMAL MODE (Беседа)', callback_data: 'mode_NORMAL' }],
-        [{ text: '🎯 DATE MODE (Закрытие)', callback_data: 'mode_DATE' }]
-    ];
+/**
+ * Меню списка диалогов («👩 Мои диалоги»)
+ */
+async function sendDialogsMenu(chatId, userId, db) {
+    const sessions = await Database.getSessions(db, userId);
+    let msg = '👩 <b>Твои активные диалоги:</b>\n\n';
+
+    const inlineKeyboard = [];
+    sessions.forEach((s, idx) => {
+        const mark = s.active ? '🟢' : '⚪️';
+        const steps = s.stepsToTaboo === 0 
+            ? '🔥 <b>МОЖНО СПРАШИВАТЬ</b>' 
+            : `~${s.stepsToTaboo || 1} шага до табу`;
+
+        msg += `${mark} <b>${idx + 1}. ${s.name}</b>\n`;
+        msg += `   🔞 Режим: <b>${s.mode || 'SEX'}</b> | Дистанция: ${steps}\n`;
+        if (s.lastGist) {
+            msg += `   💬 <i>${s.lastGist.substring(0, 60)}...</i>\n`;
+        }
+        msg += `\n`;
+
+        inlineKeyboard.push([{
+            text: `${mark} ${s.name} (${s.stepsToTaboo === 0 ? '🔥 0 ш.' : `~${s.stepsToTaboo || 1} ш.`})`,
+            callback_data: `session_switch_${s.id}`
+        }]);
+    });
+
+    inlineKeyboard.push([{
+        text: '➕ Добавить новую девушку',
+        callback_data: 'session_new'
+    }]);
+
+    msg += '<i>Нажми на девушку, чтобы сделать её диалог активным:</i>';
 
     await Telegram.sendMessage(chatId, msg, {
         replyMarkup: { inline_keyboard: inlineKeyboard }
@@ -65,29 +103,36 @@ async function sendModeMenu(chatId, userId, db) {
 }
 
 /**
- * Меню диалогов (девушек)
+ * Обработка функции «🧭 Веди меня»
  */
-async function sendDialogsMenu(chatId, userId, db) {
-    const slots = await Database.getSlots(db, userId);
-    let msg = '💃 <b>Твои диалоги с девушками:</b>\n\n';
+async function handleLeadMe(chatId, userId, db) {
+    await Telegram.sendChatAction(chatId, 'typing');
+    const sessions = await Database.getSessions(db, userId);
 
-    const inlineKeyboard = [];
-    slots.forEach(slot => {
-        const mark = slot.active ? '🟢' : '⚪️';
-        const steps = slot.stepsToTaboo === 0 ? '🔥 МОЖНО СПРАШИВАТЬ' : `~${slot.stepsToTaboo || 1} шага до табу`;
-        msg += `${mark} <b>${slot.id}. ${slot.name}</b> (${slot.platform || 'Tinder'})\n`;
-        msg += `   🔞 Режим: <b>${slot.mode || 'SEX'}</b> | Дистанция: <b>${steps}</b>\n\n`;
+    if (sessions.length === 0) {
+        await Telegram.sendMessage(chatId, 'У тебя пока нет активных диалогов. Нажми <b>➕ Новая девушка</b>!');
+        return;
+    }
 
-        inlineKeyboard.push([{
-            text: `${mark} ${slot.id}. ${slot.name} (${slot.platform || 'Tinder'})`,
-            callback_data: `slot_select_${slot.id}`
-        }]);
-    });
+    const sessionsSummary = sessions.map(s => ({
+        name: s.name,
+        mode: s.mode || 'SEX',
+        stepsToTaboo: s.stepsToTaboo,
+        tactic: s.tactic,
+        lastGist: s.lastGist || '',
+        turnsCount: s.turnsCount || 0
+    }));
 
-    msg += '<i>Нажми на кнопку ниже, чтобы переключить активную девушку:</i>';
+    const result = await AI.generateLeadMeAnalysis(sessionsSummary);
+    const kb = await getMainKeyboard(db, userId);
 
-    await Telegram.sendMessage(chatId, msg, {
-        replyMarkup: { inline_keyboard: inlineKeyboard }
+    const jumpButtons = sessions.slice(0, 5).map(s => [{
+        text: `👩 Перейти к «${s.name}»`,
+        callback_data: `session_switch_${s.id}`
+    }]);
+
+    await Telegram.sendMessage(chatId, `🧭 <b>Сводка Emanuel «Веди меня» на сегодня:</b>\n\n${result.analysis}`, {
+        replyMarkup: { inline_keyboard: jumpButtons }
     });
 }
 
@@ -121,24 +166,44 @@ async function handleCallbackQuery(cb, db) {
 
     await Telegram.answerCallbackQuery(cb.id);
 
-    // Выбор слота
-    if (data.startsWith('slot_select_')) {
-        const slotId = data.replace('slot_select_', '');
-        const chosen = await Database.switchSlot(db, userId, slotId);
+    // Переключение сессии
+    if (data.startsWith('session_switch_')) {
+        const sId = data.replace('session_switch_', '');
+        const chosen = await Database.switchSession(db, userId, sId);
         const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `🎯 Переключено на: <b>«${chosen.name}»</b> (${chosen.platform || 'Tinder'})\nРежим: <b>${chosen.mode || 'SEX'}</b>`, {
+        await Telegram.sendMessage(chatId, `👩 Активный диалог переключен на: <b>«${chosen.name}»</b>\nРежим: <b>${chosen.mode || 'SEX'}</b>`, {
             replyMarkup: kb
         });
         return;
     }
 
-    // Смена режима
-    if (data.startsWith('mode_')) {
-        const newMode = data.replace('mode_', '');
-        const activeSlot = await Database.getActiveSlot(db, userId);
-        await Database.setSlotMode(db, userId, activeSlot.id, newMode);
+    // Создание новой сессии
+    if (data === 'session_new') {
+        await Telegram.sendMessage(chatId, 'Введи имя новой девушки (или напиши команду:\n<code>/new Алина</code>)');
+        return;
+    }
+
+    // Действия под сообщением
+    if (data.startsWith('act_fast_')) {
+        const sId = data.replace('act_fast_', '');
+        await handleFastTrack(chatId, userId, sId, db);
+        return;
+    }
+
+    if (data.startsWith('act_taboo_')) {
+        const sId = data.replace('act_taboo_', '');
+        const active = await Database.getActiveSession(db, userId);
+        await Database.setSessionMode(db, userId, sId, 'SEX');
+        await Telegram.sendChatAction(chatId, 'typing');
+        await processTextInput(chatId, userId, 'Переходи к прямому вопросу о табу и сексуальных границах прямо сейчас!', true, db);
+        return;
+    }
+
+    if (data.startsWith('act_date_')) {
+        const sId = data.replace('act_date_', '');
+        await Database.setSessionMode(db, userId, sId, 'DATE');
         const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `✅ Для <b>«${activeSlot.name}»</b> установлен режим: <b>${newMode} MODE</b>`, {
+        await Telegram.sendMessage(chatId, `🎯 Для диалога включен режим <b>DATE MODE</b> (Закрытие на встречу). Кидай следующее сообщение!`, {
             replyMarkup: kb
         });
         return;
@@ -146,7 +211,7 @@ async function handleCallbackQuery(cb, db) {
 }
 
 /**
- * Обработка пользовательского сообщения
+ * Обработка сообщений пользователя
  */
 async function handleUserMessage(message, db) {
     const chatId = message.chat?.id;
@@ -156,144 +221,149 @@ async function handleUserMessage(message, db) {
 
     if (!chatId || !userId) return;
 
-    // 1. Кнопка смены режима
-    if (text === '⚙️ Режимы' || text === '/modes') {
-        await sendModeMenu(chatId, userId, db);
+    // 1. Кнопка «🧭 Веди меня»
+    if (text === '🧭 Веди меня' || text === '/leadme') {
+        await handleLeadMe(chatId, userId, db);
         return;
     }
 
-    // 2. Быстрое переключение режима
-    if (text.includes('SEX MODE') || text === '/sex') {
-        const activeSlot = await Database.getActiveSlot(db, userId);
-        await Database.setSlotMode(db, userId, activeSlot.id, 'SEX');
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `🔞 Режим для <b>«${activeSlot.name}»</b>: <b>SEX MODE</b> (Ищем кратчайший путь к проверке табу).`, { replyMarkup: kb });
-        return;
-    }
-
-    if (text === '🎯 DATE / Встреча' || text === '/date') {
-        const activeSlot = await Database.getActiveSlot(db, userId);
-        await Database.setSlotMode(db, userId, activeSlot.id, 'DATE');
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `🎯 Режим для <b>«${activeSlot.name}»</b>: <b>DATE MODE</b> (Сфокусирован только на закрытии на встречу).`, { replyMarkup: kb });
-        return;
-    }
-
-    // 3. Кнопка «⚡ Быстрее к вопросу»
-    if (text === '⚡ Быстрее к вопросу' || text === '/fast') {
-        await handleFastTrackRequest(chatId, user, userId, db);
-        return;
-    }
-
-    // 4. Кнопка «Мои диалоги»
-    if (text.startsWith('💃') || text === '/dialogs' || text === '/girls') {
+    // 2. Кнопка «👩 Мои диалоги»
+    if (text === '👩 Мои диалоги' || text.startsWith('👩 ') || text === '/dialogs') {
         await sendDialogsMenu(chatId, userId, db);
         return;
     }
 
-    // 5. Очистить память текущей девушки
-    if (text === '➕ Новый диалог' || text === '/new' || text === '/reset' || text === '/clear') {
-        const slot = await Database.getActiveSlot(db, userId);
-        await Database.clearSlotHistory(db, userId, slot.id);
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `✨ Память диалога <b>«${slot.name}»</b> очищена. Начинаем с чистого листа!`, { replyMarkup: kb });
+    // 3. Кнопка «➕ Новая девушка»
+    if (text === '➕ Новая девушка') {
+        await Telegram.sendMessage(chatId, 'Напиши имя девушки, например:\n<code>/new Марина</code>');
         return;
     }
 
-    // 6. Быстрое переключение по номеру: /girl 1..5
-    const girlMatch = text.match(/^\/girl\s*(\d)/i);
-    if (girlMatch) {
-        const slot = await Database.switchSlot(db, userId, girlMatch[1]);
+    const newMatch = text.match(/^\/(new|add)\s+(.+)/i);
+    if (newMatch) {
+        const name = newMatch[2].trim();
+        const created = await Database.createSession(db, userId, name);
         const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `🎯 Переключено на: <b>«${slot.name}»</b>`, { replyMarkup: kb });
+        await Telegram.sendMessage(chatId, `✨ Новый диалог с <b>«${created.name}»</b> создан и выбран активным! Отправляй её первое сообщение или скриншот.`, {
+            replyMarkup: kb
+        });
         return;
     }
 
-    // 7. Переименование: /rename Катя Pure
-    if (/^\/(rename|name)\s+\S/i.test(text)) {
-        const newName = text.replace(/^\/(rename|name)\s+/, '').trim();
-        const slot = await Database.renameActiveSlot(db, userId, newName);
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `✅ Диалог переименован в: <b>«${slot.name}»</b>`, { replyMarkup: kb });
+    // 4. Кнопка «⚡ Быстрее к вопросу»
+    if (text === '⚡ Быстрее к вопросу' || text === '/fast') {
+        const active = await Database.getActiveSession(db, userId);
+        await handleFastTrack(chatId, userId, active.id, db);
         return;
     }
 
-    // 8. Системные команды (/start, /help)
+    // 5. Переключение режимов
+    if (text.includes('SEX MODE') || text === '/sex') {
+        const active = await Database.getActiveSession(db, userId);
+        await Database.setSessionMode(db, userId, active.id, 'SEX');
+        const kb = await getMainKeyboard(db, userId);
+        await Telegram.sendMessage(chatId, `🔞 Режим для <b>«${active.name}»</b>: <b>SEX MODE</b> (TIME TO COMPATIBILITY).`, { replyMarkup: kb });
+        return;
+    }
+
+    if (text.includes('NORMAL MODE') || text === '💬 Обычный режим' || text === '/normal') {
+        const active = await Database.getActiveSession(db, userId);
+        await Database.setSessionMode(db, userId, active.id, 'NORMAL');
+        const kb = await getMainKeyboard(db, userId);
+        await Telegram.sendMessage(chatId, `💬 Режим для <b>«${active.name}»</b>: <b>NORMAL MODE</b> (Свободный диалог).`, { replyMarkup: kb });
+        return;
+    }
+
+    if (text.includes('DATE MODE') || text === '🎯 DATE / Встреча' || text === '/date') {
+        const active = await Database.getActiveSession(db, userId);
+        await Database.setSessionMode(db, userId, active.id, 'DATE');
+        const kb = await getMainKeyboard(db, userId);
+        await Telegram.sendMessage(chatId, `🎯 Режим для <b>«${active.name}»</b>: <b>DATE MODE</b> (Закрытие на встречу).`, { replyMarkup: kb });
+        return;
+    }
+
+    // 6. Настройки
+    if (text === '⚙️ Настройки' || text === '/settings') {
+        const kb = await getMainKeyboard(db, userId);
+        await Telegram.sendMessage(chatId, `⚙️ Настройки стиля и стратегии доступны через WebApp:\nhttps://aureliusclients.web.app/emanuel_app.html`, { replyMarkup: kb });
+        return;
+    }
+
+    // 7. /start или /help
     if (text === '/start' || text === '/help') {
         const kb = await getMainKeyboard(db, userId);
         const welcome =
-            `🔞 <b>Emanuel Dating OS — AI Wingman для быстрой проверки сексуальной совместимости.</b>\n\n` +
-            `Моя задача — избавить тебя от недель пустой переписки и как можно быстрее и естественнее определить совместимость через вопрос о табу/границах.\n\n` +
-            `📱 <b>Как со мной работать:</b>\n` +
-            `• 💬 <b>Текст:</b> Просто отправь сюда реплику девушки — я сразу посчитаю дистанцию до вопроса о сексе и дам 3 варианта ответа.\n` +
-            `• 📸 <b>Скриншот:</b> Пришли скриншот диалога — Gemini Vision распознает контекст.\n` +
-            `• ⚡ <b>Кнопка «Быстрее к вопросу»:</b> Заставит меня срезать всю воду и выйти на тему секса прямо сейчас.\n` +
-            `• 💃 <b>Слоты девушек:</b> Кнопка внизу переключает между разными девушками.`;
+            `🔞 <b>Emanuel — персональный AI Wingman мужчины.</b>\n\n` +
+            `Моя цель: как можно быстрее и естественнее привести переписку к честной проверке сексуальной совместимости через вопрос о границах и табу (<b>TIME TO COMPATIBILITY</b>).\n\n` +
+            `📱 <b>Как работать:</b>\n` +
+            `• Отправляй сюда сообщение девушки или скриншот переписки.\n` +
+            `• <b>«🧭 Веди меня»</b> — покажет сводку по всем твоим девушкам.\n` +
+            `• <b>«👩 Мои диалоги»</b> — переключение между девушками.\n` +
+            `• <b>«⚡ Быстрее к вопросу»</b> — срезать путь к теме секса прямо сейчас.`;
         await Telegram.sendMessage(chatId, welcome, { replyMarkup: kb });
         return;
     }
 
-    // 9. СКРИНШОТ (фото)
+    // 8. СКРИНШОТ
     if (message.photo && message.photo.length > 0) {
         await Telegram.sendChatAction(chatId, 'upload_photo');
         const fileId = message.photo[message.photo.length - 1].file_id;
-        await processMediaInput(chatId, user, userId, fileId, message.caption, false, db);
+        await processMediaInput(chatId, userId, fileId, message.caption, false, db);
         return;
     }
 
-    // 10. СКРИНШОТ (файл-изображение)
     if (message.document && message.document.mime_type && message.document.mime_type.startsWith('image/')) {
         await Telegram.sendChatAction(chatId, 'upload_photo');
-        await processMediaInput(chatId, user, userId, message.document.file_id, message.caption, false, db);
+        await processMediaInput(chatId, userId, message.document.file_id, message.caption, false, db);
         return;
     }
 
-    // 11. ПО ДЕФОЛТУ: ЛЮБОЙ ТЕКСТ — ЭТО РЕПЛИКА ДЕВУШКИ
+    // 9. ТЕКСТ РЕПЛИКИ ДЕВУШКИ
     if (text) {
         await Telegram.sendChatAction(chatId, 'typing');
-        await processTextInput(chatId, user, userId, text, false, db);
+        await processTextInput(chatId, userId, text, false, db);
     }
 }
 
-/**
- * Обработка запроса «⚡ Быстрее к вопросу»
- */
-async function handleFastTrackRequest(chatId, user, userId, db) {
-    const activeSlot = await Database.getActiveSlot(db, userId);
-    const history = await Database.getHistory(db, userId, activeSlot.id, 6);
+async function handleFastTrack(chatId, userId, sessionId, db) {
+    const history = await Database.getHistory(db, userId, sessionId, 6);
+    const active = await Database.getActiveSession(db, userId);
 
     if (history.length === 0) {
-        await Telegram.sendMessage(chatId, `⚡ Чтобы срезать путь к вопросу о табу, сначала пришли последнее сообщение девушки (или скриншот диалога с <b>«${activeSlot.name}»</b>)!`);
+        await Telegram.sendMessage(chatId, `⚡ Чтобы срезать путь для <b>«${active.name}»</b>, сначала пришли её последнее сообщение или скриншот!`);
         return;
     }
 
     const lastTurn = history[history.length - 1];
     await Telegram.sendChatAction(chatId, 'typing');
-    await processTextInput(chatId, user, userId, lastTurn.girl || 'Привет', true, db);
+    await processTextInput(chatId, userId, lastTurn.girl || 'Привет', true, db);
 }
 
-/**
- * Обработка текста реплики девушки
- */
-async function processTextInput(chatId, user, userId, text, fastTrack = false, db) {
+async function processTextInput(chatId, userId, text, fastTrack = false, db) {
     try {
         const userSettings = await Database.getUserSettings(db, userId);
-        const activeSlot   = await Database.getActiveSlot(db, userId);
-        const history      = await Database.getHistory(db, userId, activeSlot.id, 8);
+        const active = await Database.getActiveSession(db, userId);
+        const history = await Database.getHistory(db, userId, active.id, 8);
 
         const result = await AI.generateAdvice({
             text: text,
-            mode: activeSlot.mode || 'SEX',
+            girlName: active.name,
+            mode: active.mode || 'SEX',
             fastTrack: fastTrack,
             userSettings: userSettings,
             dialogHistory: history
         });
 
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, result.content, { replyMarkup: kb });
+        const replyKb = await getMainKeyboard(db, userId);
+        const inlineKb = getAdviceInlineKeyboard(active);
+
+        // Отправляем ответ с инлайн кнопками
+        await Telegram.sendMessage(chatId, `👩 <b>[${active.name}]</b>\n\n${result.content}`, {
+            replyMarkup: inlineKb
+        });
 
         if (result.success) {
-            await Database.addTurn(db, userId, activeSlot.id, text, result.content, result.gist, {
+            await Database.addTurn(db, userId, active.id, text, result.content, result.gist, {
                 stepsToTaboo: result.stepsToTaboo,
                 tactic: result.tactic,
                 compatibilityRadar: result.compatibilityRadar
@@ -304,41 +374,39 @@ async function processTextInput(chatId, user, userId, text, fastTrack = false, d
 
     } catch (err) {
         console.error('processTextInput error:', err);
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, '⚠️ Не удалось сгенерировать ответ. Попробуй ещё раз.', { replyMarkup: kb });
+        await Telegram.sendMessage(chatId, '⚠️ Не удалось сгенерировать ответ. Попробуй ещё раз.');
     }
 }
 
-/**
- * Обработка скриншота переписки
- */
-async function processMediaInput(chatId, user, userId, fileId, caption, fastTrack = false, db) {
+async function processMediaInput(chatId, userId, fileId, caption, fastTrack = false, db) {
     try {
         const userSettings = await Database.getUserSettings(db, userId);
-        const activeSlot   = await Database.getActiveSlot(db, userId);
-        const history      = await Database.getHistory(db, userId, activeSlot.id, 8);
+        const active = await Database.getActiveSession(db, userId);
+        const history = await Database.getHistory(db, userId, active.id, 8);
 
         const imageBase64 = await Telegram.getFileAsBase64(fileId);
         if (!imageBase64) {
-            const kb = await getMainKeyboard(db, userId);
-            await Telegram.sendMessage(chatId, '⚠️ Не удалось скачать скриншот из Telegram. Попробуй переслать ещё раз или скопируй текст.', { replyMarkup: kb });
+            await Telegram.sendMessage(chatId, '⚠️ Не удалось скачать скриншот. Попробуй скопировать текст реплики.');
             return;
         }
 
         const result = await AI.generateAdvice({
             imageBase64: imageBase64,
+            girlName: active.name,
             text: caption || '',
-            mode: activeSlot.mode || 'SEX',
+            mode: active.mode || 'SEX',
             fastTrack: fastTrack,
             userSettings: userSettings,
             dialogHistory: history
         });
 
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, result.content, { replyMarkup: kb });
+        const inlineKb = getAdviceInlineKeyboard(active);
+        await Telegram.sendMessage(chatId, `👩 <b>[${active.name}]</b>\n\n${result.content}`, {
+            replyMarkup: inlineKb
+        });
 
         if (result.success) {
-            await Database.addTurn(db, userId, activeSlot.id, caption || '[Скриншот диалога]', result.content, result.gist, {
+            await Database.addTurn(db, userId, active.id, caption || '[Скриншот диалога]', result.content, result.gist, {
                 stepsToTaboo: result.stepsToTaboo,
                 tactic: result.tactic,
                 compatibilityRadar: result.compatibilityRadar
@@ -349,14 +417,12 @@ async function processMediaInput(chatId, user, userId, fileId, caption, fastTrac
 
     } catch (err) {
         console.error('processMediaInput error:', err);
-        const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, '⚠️ Ошибка анализа скриншота. Попробуй скопировать текст реплики.', { replyMarkup: kb });
+        await Telegram.sendMessage(chatId, '⚠️ Ошибка анализа скриншота.');
     }
 }
 
 module.exports = {
     processEmanuelUpdate,
     getMainKeyboard,
-    sendDialogsMenu,
-    sendModeMenu
+    sendDialogsMenu
 };

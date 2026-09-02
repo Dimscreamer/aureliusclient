@@ -212,39 +212,28 @@
     </div>
   </div>
 
-  <!-- 1. Платформа -->
+  <!-- 1. Скорость движения к табу -->
   <div class="card">
-    <div class="card-title">📱 Платформа переписки</div>
-    <div class="options-grid" id="group-platform">
-      <div class="option-btn active" data-val="Tinder">🔥 Tinder<span class="desc">Универсальный</span></div>
-      <div class="option-btn" data-val="Pure">😈 Pure<span class="desc">Прямой флирт</span></div>
-      <div class="option-btn" data-val="Bumble">🐝 Bumble<span class="desc">Инициатива девушки</span></div>
-      <div class="option-btn" data-val="Telegram">✈️ Telegram<span class="desc">Личный контакт</span></div>
+    <div class="card-title">⚡ Скорость движения к теме</div>
+    <div class="options-grid" id="group-speed">
+      <div class="option-btn active" data-val="fast">⚡ Максимум быстро<span class="desc">Срезать всю воду</span></div>
+      <div class="option-btn" data-val="optimal">⚖️ Оптимально<span class="desc">1-2 шага мостика</span></div>
+      <div class="option-btn full-width" data-val="smooth">🌊 Осторожно<span class="desc">Плавный разогрев интереса</span></div>
     </div>
   </div>
 
-  <!-- 2. Цель -->
+  <!-- 2. Прямота сексуальных вопросов -->
   <div class="card">
-    <div class="card-title">🎯 Главная цель диалога</div>
-    <div class="options-grid" id="group-goal">
-      <div class="option-btn active full-width" data-val="hookup">
-        ⚡ Быстрый секс / Hookup
-        <span class="desc">1-2 встречи, максимальная страсть и минимум воды</span>
-      </div>
-      <div class="option-btn full-width" data-val="fwb">
-        🥂 Свободные отношения / FWB
-        <span class="desc">Регулярные встречи без обязательств и драмы</span>
-      </div>
-      <div class="option-btn full-width" data-val="relationship">
-        💍 Отношения / Romance
-        <span class="desc">Поиск постоянной девушки, глубокий коннект</span>
-      </div>
+    <div class="card-title">🎯 Прямота вопросов о табу</div>
+    <div class="options-grid" id="group-directness">
+      <div class="option-btn active" data-val="direct">🔥 Прямо<span class="desc">Без завуалирования</span></div>
+      <div class="option-btn" data-val="soft">🎩 Мягко<span class="desc">С лёгкой интригой</span></div>
     </div>
   </div>
 
-  <!-- 3. Тональность -->
+  <!-- 3. Тональность стиля -->
   <div class="card">
-    <div class="card-title">⚡ Тональность реплик</div>
+    <div class="card-title">🧬 Тональность стиля</div>
     <div class="options-grid" id="group-tone">
       <div class="option-btn" data-val="gentle">🌸 Тактичный<span class="desc">Мягкий и вежливый</span></div>
       <div class="option-btn active" data-val="confident">😎 Уверенный<span class="desc">Остроумный баланс</span></div>
@@ -276,10 +265,9 @@
 
     const state = {
       mode: 'SEX',
-      platform: 'Tinder',
-      goal: 'hookup',
-      tone: 'confident',
-      escalation: 'optimal'
+      speed: 'fast',
+      directness: 'direct',
+      tone: 'confident'
     };
 
     function setupGroup(groupId, stateKey) {
@@ -297,10 +285,9 @@
     }
 
     setupGroup('group-mode', 'mode');
-    setupGroup('group-platform', 'platform');
-    setupGroup('group-goal', 'goal');
+    setupGroup('group-speed', 'speed');
+    setupGroup('group-directness', 'directness');
     setupGroup('group-tone', 'tone');
-    setupGroup('group-escalation', 'escalation');
 
     document.getElementById('save-btn').addEventListener('click', () => {
       if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
