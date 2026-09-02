@@ -978,3 +978,20 @@ exports.markWebhook = onRequest({ cors: true, maxInstances: 10, memory: '512MiB'
         res.status(500).send('Error');
     }
 });
+
+// ==============================================================================
+// 🏛️ ARES AI COGNITIVE OS ENGINE (v10.0 Modular Architecture)
+// ==============================================================================
+const { handleAresUpdate } = require("./ares/ares_entry");
+
+exports.aresWebhook = onRequest({ cors: true, maxInstances: 10, memory: '512MiB' }, async (req, res) => {
+    try {
+        if (req.method === 'POST') {
+            await handleAresUpdate(req.body);
+        }
+        res.status(200).send('OK');
+    } catch (e) {
+        console.error("Ares Webhook Error:", e);
+        res.status(500).send('Error');
+    }
+});
