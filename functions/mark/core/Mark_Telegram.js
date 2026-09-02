@@ -219,7 +219,10 @@ async function sendTelegramPhoto(chatId, base64Image, caption = '') {
     const fd = new FormData();
     fd.append('chat_id', String(chatId));
     fd.append('photo', blob, 'dashboard.png');
-    if (caption) fd.append('caption', caption);
+    if (caption) {
+        fd.append('caption', caption);
+        fd.append('parse_mode', 'HTML');
+    }
 
     const url = `https://api.telegram.org/bot${MARK_CONFIG.TELEGRAM_TOKEN}/sendPhoto`;
     try {

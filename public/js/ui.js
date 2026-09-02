@@ -1186,52 +1186,53 @@ window.exportDashboardToChat = async function() {
             });
         }
 
-        // 3. Stack Campaigns & Conversions vertically (1 column)
-        const campaignsList = clone.querySelector('#ads-campaigns-list');
-        if (campaignsList) {
-            const wrapper = campaignsList.closest('.grid');
-            if (wrapper) {
-                wrapper.className = 'grid grid-cols-1 gap-6';
-            }
-            
-            // Re-style campaigns for maximum legibility and color coding
-            campaignsList.querySelectorAll(':scope > div').forEach(camp => {
-                const nameEl = camp.querySelector('span');
-                if (nameEl) {
-                    nameEl.className = 'text-xl font-black text-white mb-2 break-words block';
-                }
-                const subRow = camp.querySelector('div.min-w-0 > span:last-child');
-                if (subRow) {
-                    subRow.className = 'text-xs mt-2 flex flex-wrap gap-2 items-center';
-                    let html = subRow.innerHTML;
-                    html = html.replace(/Клики:\s*(\d+)/g, '<span class="text-cyan-400 font-bold bg-cyan-950/60 border border-cyan-800/50 px-2 py-1 rounded">Клики: $1</span>');
-                    html = html.replace(/Расход:\s*([\d.]+)\s*([A-Z]+)/g, '<span class="text-purple-400 font-bold bg-purple-950/60 border border-purple-800/50 px-2 py-1 rounded">Расход: $1 $2</span>');
-                    html = html.replace(/SearchIS:\s*([<>\d.%]+)/g, '<span class="text-orange-400 font-bold bg-orange-950/60 border border-orange-800/50 px-2 py-1 rounded">Search IS: $1</span>');
-                    html = html.replace(/\|/g, '');
-                    subRow.innerHTML = html;
-                }
-                
-                const rightSide = camp.querySelector('.text-right');
-                if (rightSide) {
-                    const convEl = rightSide.querySelector('span:first-child');
-                    if (convEl) convEl.className = 'text-2xl text-emerald-400 font-black block';
-                    const cpaEl = rightSide.querySelector('span:last-child');
-                    if (cpaEl) {
-                        cpaEl.className = 'text-sm text-pink-400 font-bold mt-1 block';
-                    }
-                }
-            });
+        // 3. Re-render Campaigns List completely for the image
+        const campaignsWidget = clone.querySelector('#ads-campaigns-list')?.closest('.bg-black\\/40') || clone.querySelector('#ads-campaigns-list')?.parentElement;
+        const conversionsWidget = clone.querySelector('#ads-conversions-list')?.closest('.bg-black\\/40') || clone.querySelector('#ads-conversions-list')?.parentElement;
+        const gridWrapper = campaignsWidget?.parentElement;
+
+        if (conversionsWidget) {
+            conversionsWidget.remove(); // Remove conversions widget completely
+        }
+        
+        if (gridWrapper) {
+            gridWrapper.className = 'flex flex-col gap-6 w-full mt-4';
         }
 
-        // 4. Re-style Conversions list
-        const convList = clone.querySelector('#ads-conversions-list');
-        if (convList) {
-            convList.querySelectorAll(':scope > div').forEach(conv => {
-                const nameEl = conv.querySelector('span:first-child');
-                if (nameEl) nameEl.className = 'text-base font-bold text-gray-200 break-words pr-4';
-                const valEl = conv.querySelector('span:last-child');
-                if (valEl) valEl.className = 'text-2xl text-emerald-400 font-black shrink-0';
-            });
+        if (campaignsWidget) {
+            const listEl = campaignsWidget.querySelector('#ads-campaigns-list');
+            const pk = window.currentAdsPeriod || 'LAST_30_DAYS';
+            const st = c.ads_analytics || c.ads_stats || c.adsStats || {};
+            const rawCampaigns = st.campaigns || [];
+            const filteredCampaigns = rawCampaigns.filter(cmp => !cmp.period || cmp.period === pk);
+            
+            // Re-render Campaigns with large fonts and badged metrics
+            if (filteredCampaigns.length > 0 && listEl) {
+                listEl.innerHTML = filteredCampaigns.map(cmp => {
+                    const ctr = cmp.ctr || '--';
+                    const roas = cmp.roas || '--';
+                    const searchIs = cmp.searchImpressionShare || '--';
+                    const currency = st.currency || c.currency || 'UAH';
+                    return `
+                    <div class="p-5 bg-white/5 rounded-2xl border border-white/10 flex flex-col gap-4 mb-4">
+                        <div class="flex justify-between items-start gap-4">
+                            <span class="text-2xl font-black text-white break-words">${cmp.name}</span>
+                            <div class="text-right shrink-0">
+                                <span class="text-4xl text-emerald-400 font-black block">🎯 ${cmp.conversions}</span>
+                                <span class="text-lg text-pink-400 font-bold mt-1 block">CPA: ${cmp.cpa || '—'}</span>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2 items-center text-sm font-mono mt-2">
+                            <span class="text-cyan-400 font-bold bg-cyan-950/80 border border-cyan-800/80 px-3 py-1.5 rounded-lg">🖱 Кліки: ${cmp.clicks}</span>
+                            <span class="text-purple-400 font-bold bg-purple-950/80 border border-purple-800/80 px-3 py-1.5 rounded-lg">💰 Расход: ${cmp.cost} ${currency}</span>
+                            <span class="text-blue-400 font-bold bg-blue-950/80 border border-blue-800/80 px-3 py-1.5 rounded-lg">📈 CTR: ${ctr}</span>
+                            <span class="text-yellow-400 font-bold bg-yellow-950/80 border border-yellow-800/80 px-3 py-1.5 rounded-lg">🔥 ROAS: ${roas}</span>
+                            <span class="text-orange-400 font-bold bg-orange-950/80 border border-orange-800/80 px-3 py-1.5 rounded-lg">🔎 Search IS: ${searchIs}</span>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            }
         }
 
         // 5. Remove Search Queries block entirely from image
@@ -1277,8 +1278,10 @@ window.exportDashboardToChat = async function() {
             queriesForExport = rq.filter(q => (!q.period || q.period === pk) && parseFloat(q.conversions || 0) > 0).sort((a,b) => parseFloat(b.conversions || 0) - parseFloat(a.conversions || 0));
         }
 
+        const st = c.ads_analytics || c.ads_stats || c.adsStats || {};
+        const currency = st.currency || c.currency || c.ads_currency || 'UAH';
         const queriesText = (queriesForExport && queriesForExport.length > 0)
-            ? queriesForExport.slice(0, 20).map(q => '• ' + q.query + ' — ' + q.conversions + ' конв. (CPA: ' + q.cost + ' ' + (c.ads_currency || 'UAH') + ')').join('\n')
+            ? queriesForExport.slice(0, 10).map(q => '• ' + q.query + ' — ' + q.conversions + ' конв. (CPA: ' + q.cost + ' ' + currency + ')').join('\n')
             : '';
 
         const res = await fetch('https://api-lzh3pje5pa-uc.a.run.app/api', {

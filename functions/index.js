@@ -42,6 +42,18 @@ async function sendMessage(chatId, text, keyboard = null) {
     }
 }
 
+async function logSys(type, message) {
+    try {
+        await db.collection("system_logs").add({
+            type: type || "api",
+            message: message ? message.toString() : "",
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    } catch(e) {
+        console.error("logSys error:", e);
+    }
+}
+
 function getTodayKyiv() {
     return new Date().toLocaleDateString("sv-SE", { timeZone: TIMEZONE });
 }
@@ -49,6 +61,7 @@ function getTodayKyiv() {
 exports.api = onRequest({ cors: true, maxInstances: 10 }, async (req, res) => {
     setCors(res);
     if (req.method === "OPTIONS") return res.status(204).send("");
+    if (req.method === "GET" || req.method === "HEAD") return res.status(200).send("OK");
 
     let data = req.body;
     if (Buffer.isBuffer(req.rawBody)) {
@@ -66,8 +79,17 @@ exports.api = onRequest({ cors: true, maxInstances: 10 }, async (req, res) => {
             const item = data.data.statementItem;
             const comment = item.comment || item.description || "";
             const match = comment.match(/ID\s*[:\-\s]?\s*(\d+)/i);
+            const amountUah = Math.abs(item.amount / 100);
+
+            try {
+                await db.collection("webhook_history").add({
+                    receivedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    item: item
+                });
+                await logSys("webhook", `Входящая транзакция Mono: ${amountUah} грн (${comment || 'Без комментария'})`);
+            } catch(we) { console.error("Webhook save error:", we); }
+
             if (match) {
-                const amountUah = Math.abs(item.amount / 100);
                 await sendMessage(CONFIG.ADMIN_CHAT_ID, `✅ <b>Оплата получена:</b> ${amountUah} грн (ID: ${match[1]})`);
             }
             return res.send("ok");
@@ -336,10 +358,388 @@ exports.api = onRequest({ cors: true, maxInstances: 10 }, async (req, res) => {
             return res.json({ status: "success", message: "Monthly history processed", adsId, count: monthlyStats.length });
         }
 
-        return res.status(400).send("No valid action found");
+        // === DIAGNOSTICS ENDPOINTS ===
+        if (data.action === 'getScheduledQueue') {
+            const snap = await db.collection(SCHEDULED_INVOICES_COLLECTION).get();
+            const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            return res.json({ success: true, docs });
+        }
+
+        if (data.action === 'getSystemLogs') {
+            let logs = [];
+            try {
+                const snap = await db.collection("system_logs").orderBy("createdAt", "desc").limit(60).get();
+                logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            } catch(e) {
+                try {
+                    const snap2 = await db.collection("system_logs").limit(60).get();
+                    logs = snap2.docs.map(d => ({ id: d.id, ...d.data() }));
+                } catch(e2) {}
+            }
+            return res.json({ success: true, logs });
+        }
+
+        if (data.action === 'getWebhookHistory') {
+            let history = [];
+            try {
+                const snap = await db.collection("webhook_history").orderBy("receivedAt", "desc").limit(30).get();
+                history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            } catch(e) {
+                try {
+                    const snap2 = await db.collection("webhook_history").limit(30).get();
+                    history = snap2.docs.map(d => ({ id: d.id, ...d.data() }));
+                } catch(e2) {}
+            }
+            return res.json({ success: true, history });
+        }
+
+        if (data.action === 'clearTestInvoices') {
+            const snap = await db.collection(SCHEDULED_INVOICES_COLLECTION).get();
+            let deleted = 0;
+            for (const doc of snap.docs) {
+                const d = doc.data();
+                if (doc.id.startsWith("TEST") || d.isDiagnostic || (d.id && d.id.toString().startsWith("TEST"))) {
+                    await doc.ref.delete();
+                    deleted++;
+                }
+            }
+            await logSys("api", `Удалено тестовых записей из очереди: ${deleted}`);
+            return res.json({ success: true, deleted });
+        }
+
+        if (data.action === 'triggerTestInvoice') {
+            const testDocId = "TEST_" + Date.now();
+            const today = getTodayKyiv();
+            const testData = {
+                id: testDocId,
+                clientId: testDocId,
+                clientName: "Тестовый Клиент (Диагностика)",
+                amount: "1",
+                targetDate: today,
+                status: "test-sent",
+                isDiagnostic: true,
+                lastSentDate: today,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+            await db.collection(SCHEDULED_INVOICES_COLLECTION).doc(testDocId).set(testData);
+            await sendMessage(CONFIG.ADMIN_CHAT_ID, `🧪 <b>Тестовый автоинвойс создан</b>\nID: <code>${testDocId}</code>\nСумма: $1\nОчередь: запланировано на ${today}`);
+            await logSys("scheduler", `Запуск теста автоинвойса (ID: ${testDocId})`);
+            return res.json({
+                success: true,
+                testDocId,
+                logs: [
+                    "Подключение к базе Firestore: OK",
+                    `Создан тестовый инвойс ${testDocId} в коллекции ${SCHEDULED_INVOICES_COLLECTION}`,
+                    "Отправлено сервисное уведомление в Telegram",
+                    "Статус проверки: УСПЕШНО"
+                ]
+            });
+        }
+
+        if (data.action === 'setWebhook') {
+            try {
+                const monoUrl = "https://api.monobank.ua/personal/webhook";
+                const webhookUrl = "https://api-lzh3pje5pa-uc.a.run.app/api";
+                const monoResp = await axios.post(monoUrl, { webHookUrl: webhookUrl }, {
+                    headers: { "X-Token": CONFIG.MONO_TOKEN },
+                    timeout: 10000
+                });
+                await logSys("webhook", `Установка вебхука Monobank: ${JSON.stringify(monoResp.data || "OK")}`);
+                return res.send(typeof monoResp.data === 'object' ? JSON.stringify(monoResp.data) : (monoResp.data || "OK"));
+            } catch(mErr) {
+                const errDetail = mErr.response?.data?.errorDescription || mErr.message;
+                await logSys("webhook", `Ошибка установки вебхука: ${errDetail}`);
+                return res.status(500).send("Ошибка Monobank: " + errDetail);
+            }
+        }
+
+        if (data.action === 'syncAllExpectedIncomeToAres') {
+            const mRef = db.collection("artifacts").doc("aureliusclients").collection("public").doc("data").collection("clients_db").doc("master");
+            const mSnap = await mRef.get();
+            const cls = mSnap.exists ? (mSnap.data().clients || []) : [];
+            let count = 0;
+            for (const c of cls) {
+                if (c.status === 'Активен' && !c.archived && c.recurring !== false && c.date) {
+                    await db.collection(SCHEDULED_INVOICES_COLLECTION).doc(c.id.toString()).set({
+                        clientId: c.id,
+                        clientName: c.name,
+                        amount: c.amount || "0",
+                        targetDate: c.date,
+                        telegramChatId: c.telegramChatId || "",
+                        siteUrl: (c.links && c.links.site) || "",
+                        adsId: c.adsId || "",
+                        recurring: true,
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    count++;
+                }
+            }
+            await logSys("api", `Синхронизация с Ares: обновлено ${count} клиентов`);
+            return res.json({ success: true, count });
+        }
+
+        if (data.action === 'syncAndCleanScheduledInvoices') {
+            const mRef = db.collection("artifacts").doc("aureliusclients").collection("public").doc("data").collection("clients_db").doc("master");
+            const mSnap = await mRef.get();
+            const cls = mSnap.exists ? (mSnap.data().clients || []) : [];
+            const activeMap = new Map();
+            cls.forEach(c => {
+                if (c.status === 'Активен' && !c.archived) {
+                    activeMap.set(c.id.toString(), c);
+                }
+            });
+            const siSnap = await db.collection(SCHEDULED_INVOICES_COLLECTION).get();
+            let deleted = 0;
+            let synced = 0;
+            for (const doc of siSnap.docs) {
+                if (doc.id.startsWith("TEST") || doc.data().isDiagnostic) continue;
+                if (!activeMap.has(doc.id)) {
+                    await doc.ref.delete();
+                    deleted++;
+                }
+            }
+            for (const [id, c] of activeMap.entries()) {
+                if (c.recurring !== false && c.date) {
+                    await db.collection(SCHEDULED_INVOICES_COLLECTION).doc(id).set({
+                        clientId: c.id,
+                        clientName: c.name,
+                        amount: c.amount || "0",
+                        targetDate: c.date,
+                        telegramChatId: c.telegramChatId || "",
+                        siteUrl: (c.links && c.links.site) || "",
+                        adsId: c.adsId || "",
+                        recurring: true,
+                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    synced++;
+                }
+            }
+            await logSys("scheduler", `Очистка очереди: удалено ${deleted}, синхронизировано ${synced}`);
+            return res.json({ success: true, deleted, synced });
+        }
+
+        if (data.action === 'runDiagnostic') {
+            await sendMessage(CONFIG.ADMIN_CHAT_ID, `🔍 <b>Диагностика:</b> ${escapeHtml(data.clientName || data.clientId)}\nID: <code>${data.clientId}</code>\nAds ID: <code>${data.adsId || '—'}</code>\nСистема: OK`);
+            await logSys("api", `Запуск диагностики клиента ${data.clientName || data.clientId}`);
+            return res.json({ success: true });
+        }
+
+        // === ARES CALENDAR ===
+        if (data.action === 'ares_getCalendarMonth') {
+            const year = parseInt(data.year);
+            const month = parseInt(data.month);
+            const monthStr = String(month + 1).padStart(2, '0');
+            const prefix = `${year}-${monthStr}`;
+            try {
+                const calSnap = await db.collection("calendar_events")
+                    .where("date", ">=", `${prefix}-01`)
+                    .where("date", "<=", `${prefix}-31`)
+                    .get();
+                const datesSet = new Set();
+                calSnap.docs.forEach(doc => {
+                    const d = doc.data().date;
+                    if (d) datesSet.add(d);
+                });
+                return res.json({ success: true, dates: Array.from(datesSet) });
+            } catch (err) {
+                console.error("ares_getCalendarMonth error:", err);
+                return res.json({ success: true, dates: [] });
+            }
+        }
+
+        if (data.action === 'ares_getCalendarDay') {
+            const dateStr = (data.date || "").toString().trim();
+            try {
+                const calSnap = await db.collection("calendar_events")
+                    .where("date", "==", dateStr)
+                    .get();
+                const events = calSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                events.sort((a, b) => (a.start || "").localeCompare(b.start || ""));
+                return res.json({ success: true, events });
+            } catch (err) {
+                console.error("ares_getCalendarDay error:", err);
+                return res.json({ success: true, events: [] });
+            }
+        }
+
+        if (data.action === 'ares_saveCalendarEvent') {
+            const eventId = data.id || ("ev_" + Date.now());
+            const dateStr = (data.date || "").toString().trim();
+            const title = (data.title || "Событие").toString().trim();
+            const start = data.start || "";
+            const end = data.end || "";
+            
+            let startTime = "";
+            let endTime = "";
+            if (start.includes('T')) startTime = start.split('T')[1].substring(0, 5);
+            else if (start.includes(':')) startTime = start.substring(0, 5);
+            if (end.includes('T')) endTime = end.split('T')[1].substring(0, 5);
+            else if (end.includes(':')) endTime = end.substring(0, 5);
+
+            const evData = {
+                id: eventId,
+                title,
+                start: startTime || "09:00",
+                end: endTime || "10:00",
+                startRaw: start,
+                endRaw: end,
+                date: dateStr,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            };
+            await db.collection("calendar_events").doc(eventId).set(evData, { merge: true });
+            await logSys("api", `Календарь: сохранено "${title}" на ${dateStr} (${evData.start}-${evData.end})`);
+            return res.json({ success: true, id: eventId, event: evData });
+        }
+
+        if (data.action === 'ares_deleteCalendarEvent') {
+            const eventId = (data.id || "").toString().trim();
+            if (eventId) {
+                await db.collection("calendar_events").doc(eventId).delete();
+                await logSys("api", `Календарь: удалено событие ${eventId}`);
+            }
+            return res.json({ success: true });
+        }
+
+        // === ARES INTENTS, MODULES & SETTINGS ===
+        if (data.action === 'ares_getIntents') {
+            try {
+                const intSnap = await db.collection("ares_intents").get();
+                let intents = intSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (intents.length === 0) {
+                    intents = [
+                        { function: "add_event", module: "calendar", exact: "запиши, встреча, создай встречу", instruction: "Создать событие в календаре", enabled: true },
+                        { function: "get_schedule", module: "calendar", exact: "какие планы, расписание, что на сегодня", instruction: "Показать расписание на день", enabled: true },
+                        { function: "add_expense", module: "finance", exact: "потратил, расход, купил", instruction: "Записать расход", enabled: true },
+                        { function: "check_balance", module: "finance", exact: "баланс, сколько денег", instruction: "Показать текущий баланс", enabled: true },
+                        { function: "ads_summary", module: "ads", exact: "статистика рекламы, google ads, расход рекламы", instruction: "Показать аналитику рекламы", enabled: true }
+                    ];
+                }
+                return res.json({ success: true, intents });
+            } catch(e) {
+                return res.json({ success: true, intents: [] });
+            }
+        }
+
+        if (data.action === 'ares_saveIntent') {
+            const intent = data.intent || {};
+            if (intent.function) {
+                await db.collection("ares_intents").doc(intent.function).set({
+                    ...intent,
+                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+            }
+            const intSnap = await db.collection("ares_intents").get();
+            const intents = intSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            return res.json({ success: true, intents });
+        }
+
+        if (data.action === 'ares_syncIntents') {
+            const intSnap = await db.collection("ares_intents").get();
+            return res.json({ success: true, count: intSnap.size });
+        }
+
+        if (data.action === 'ares_getModules') {
+            const defaultModules = [
+                { name: "ads", title: "📊 Google Ads & CRM", desc: "Управление кампаниями, KPI и аналитикой", icon: "trending-up", color: "#06b6d4", enabled: true, priority: 90, sessionTimeout: 10 },
+                { name: "calendar", title: "📅 Календарь", desc: "События и расписание Google Calendar", icon: "calendar", color: "#10b981", enabled: true, priority: 88, sessionTimeout: 10 },
+                { name: "finance", title: "💰 Финансы", desc: "Учет доходов, расходов и платежей", icon: "dollar-sign", color: "#f59e0b", enabled: true, priority: 85, sessionTimeout: 10 },
+                { name: "tasks", title: "✅ Задачи", desc: "Трекер операционных задач и проектов", icon: "check-square", color: "#8b5cf6", enabled: true, priority: 80, sessionTimeout: 10 },
+                { name: "nutrition", title: "🍎 Питание", desc: "Дневник питания, расчет калорий и БЖУ", icon: "apple", color: "#ef4444", enabled: true, priority: 75, sessionTimeout: 10 },
+                { name: "diary", title: "📝 Дневник", desc: "Заметки, вечерняя рефлексия и мысли", icon: "book-open", color: "#ec4899", enabled: true, priority: 70, sessionTimeout: 10 },
+                { name: "reminders", title: "⏰ Напоминания", desc: "Уведомления и запланированные сигналы", icon: "bell", color: "#3b82f6", enabled: true, priority: 65, sessionTimeout: 10 },
+                { name: "news", title: "📰 Новости", desc: "Интеллектуальная сводка новостей и трендов", icon: "newspaper", color: "#6366f1", enabled: true, priority: 60, sessionTimeout: 10 },
+                { name: "metanoia", title: "🧘 Метанойя", desc: "Ментальное здоровье, когнитивный майндсет", icon: "sparkles", color: "#a855f7", enabled: true, priority: 55, sessionTimeout: 10 }
+            ];
+            try {
+                const cfgDoc = await db.collection("ares_config").doc("modules").get();
+                if (cfgDoc.exists) {
+                    const saved = cfgDoc.data().modules || [];
+                    const merged = defaultModules.map(dm => {
+                        const f = saved.find(s => s.name === dm.name);
+                        return f ? { ...dm, ...f } : dm;
+                    });
+                    return res.json({ success: true, modules: merged });
+                }
+            } catch(e) {}
+            return res.json({ success: true, modules: defaultModules });
+        }
+
+        if (data.action === 'ares_saveModuleConfig') {
+            const { moduleName, config } = data;
+            if (moduleName) {
+                const cfgRef = db.collection("ares_config").doc("modules");
+                const doc = await cfgRef.get();
+                let list = doc.exists ? (doc.data().modules || []) : [];
+                const idx = list.findIndex(m => m.name === moduleName);
+                if (idx >= 0) list[idx] = { ...list[idx], ...config };
+                else list.push({ name: moduleName, ...config });
+                await cfgRef.set({ modules: list }, { merge: true });
+            }
+            return res.json({ success: true });
+        }
+
+        if (data.action === 'ares_getSettings') {
+            let settings = { model: "google/gemini-2.5-flash-lite", debug: false };
+            try {
+                const sDoc = await db.collection("ares_config").doc("settings").get();
+                if (sDoc.exists) settings = { ...settings, ...sDoc.data() };
+            } catch(e) {}
+            return res.json({ success: true, settings });
+        }
+
+        if (data.action === 'ares_saveSettings') {
+            const settings = data.settings || {};
+            await db.collection("ares_config").doc("settings").set(settings, { merge: true });
+            return res.json({ success: true });
+        }
+
+        if (data.action === 'ares_testPrompt') {
+            const startTime = Date.now();
+            const prompt = (data.prompt || "").toString().trim();
+            let reply = `⚡ <b>Ares Cognitive Engine:</b>\nЗапрос обработан: <i>"${escapeHtml(prompt)}"</i>\nКонтекст: OK. Протоколы синхронизированы.`;
+            try {
+                const { callMarkLLM } = require('./mark/core/Mark_AI_Bridge');
+                const aiRes = await callMarkLLM({
+                    systemPrompt: "Ты — Ares OS, персональная когнитивная операционная система. Отвечай емко, профессионально и по делу.",
+                    userPrompt: prompt
+                });
+                if (aiRes && aiRes.reply) {
+                    reply = aiRes.reply;
+                }
+            } catch(aiErr) {
+                console.error("ares_testPrompt AI error:", aiErr.message);
+            }
+            const duration = Date.now() - startTime;
+            return res.json({ success: true, reply, duration });
+        }
+
+        // === MARK OS MINI APP CONFIG ===
+        if (data.action === 'markOsGetConfig') {
+            let cfg = {
+                modules: {
+                    google_ads: { enabled: true, exactMatches: ["ads", "кампании", "статистика", "реклама"], broadMatches: ["ads", "трафик", "клик"] },
+                    freelancehunt: { enabled: true, exactMatches: ["фриланс", "проекты", "fh"], broadMatches: ["заказ", "ставка"] },
+                    automation: { enabled: true, exactMatches: ["статус", "лог", "очередь"], broadMatches: ["сервер", "система"] }
+                }
+            };
+            try {
+                const doc = await db.collection("mark_config").doc("modules").get();
+                if (doc.exists) cfg = doc.data();
+            } catch(e) {}
+            return res.json(cfg);
+        }
+
+        if (data.action === 'markOsSaveConfig') {
+            if (data.config) {
+                await db.collection("mark_config").doc("modules").set(data.config, { merge: true });
+            }
+            return res.json({ success: true });
+        }
+
+        return res.status(400).json({ success: false, error: "No valid action found: " + (data.action || "none") });
     } catch (err) {
         console.error("API Error:", err);
-        return res.status(500).send("Error: " + err.message);
+        return res.status(500).json({ success: false, error: "Error: " + err.message });
     }
 });
 

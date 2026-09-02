@@ -1,5 +1,4 @@
-// config.js — Конфигурация приложения
-var GOOGLE_SCRIPT_URL = "https://api-lzh3pje5pa-uc.a.run.app/api";
+var GOOGLE_SCRIPT_URL = (typeof window !== 'undefined' && (window.location.origin.includes('web.app') || window.location.origin.includes('firebaseapp.com'))) ? '/api' : "https://api-lzh3pje5pa-uc.a.run.app/api";
 
 var FIREBASE_CONFIG = {
     apiKey: "AIzaSyDY3T5iVpsWCiJX6LaytEpTvAvaVcPWYZ0",
