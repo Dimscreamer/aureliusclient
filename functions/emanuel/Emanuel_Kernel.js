@@ -1,18 +1,16 @@
 /**
- * 🚀 Emanuel_Kernel.js — Ядро диспетчеризации Emanuel Dating OS
+ * 🚀 Emanuel_Kernel.js — Ядро диспетчеризации Emanuel Dating OS (SEX MODE Focus)
  */
 const { EMANUEL_CONFIG } = require('./Emanuel_Config');
 const Telegram = require('./Emanuel_Telegram');
 const Database = require('./Emanuel_Database');
 const AI = require('./Emanuel_AI');
 
-// In-memory кэш для дедупликации update_id
 const updateCache = new Map();
 
 function isDuplicate(updateId) {
     if (!updateId) return false;
     const now = Date.now();
-    // Очистка старых (> 5 минут)
     for (const [id, time] of updateCache.entries()) {
         if (now - time > 300000) updateCache.delete(id);
     }
@@ -22,19 +20,22 @@ function isDuplicate(updateId) {
 }
 
 /**
- * Получить главную клавиатуру внизу чата
+ * Главная клавиатура Telegram с фокусом на SEX MODE и сокращение пути
  */
 async function getMainKeyboard(db, userId) {
     const activeSlot = await Database.getActiveSlot(db, userId);
-    const label = activeSlot ? `💃 ${activeSlot.name.substring(0, 18)}` : '💃 Мои диалоги';
+    const mode = activeSlot?.mode || 'SEX';
+    const girlLabel = activeSlot ? `💃 ${activeSlot.name.substring(0, 16)}` : '💃 Мои диалоги';
+
+    let modeIcon = '🔞';
+    if (mode === 'NORMAL') modeIcon = '💬';
+    if (mode === 'DATE') modeIcon = '🎯';
 
     return {
         keyboard: [
-            [{ text: label }, { text: '➕ Новый диалог' }],
-            [
-                { text: '🔥 Emanuel OS (Настройки)', web_app: { url: EMANUEL_CONFIG.WEB_APP_URL } },
-                { text: '🎯 Платформа' }
-            ]
+            [{ text: `${modeIcon} ${mode} MODE` }, { text: girlLabel }],
+            [{ text: '⚡ Быстрее к вопросу' }, { text: '🎯 DATE / Встреча' }],
+            [{ text: '➕ Новый диалог' }, { text: '⚙️ Режимы' }]
         ],
         resize_keyboard: true,
         is_persistent: true
@@ -42,7 +43,29 @@ async function getMainKeyboard(db, userId) {
 }
 
 /**
- * Отправить меню выбора диалога (слотов)
+ * Меню переключения режимов
+ */
+async function sendModeMenu(chatId, userId, db) {
+    const activeSlot = await Database.getActiveSlot(db, userId);
+    const msg =
+        `⚙️ <b>Выбери режим стратегии для «${activeSlot.name}»:</b>\n\n` +
+        `🔞 <b>SEX MODE (По умолчанию)</b> — Минимальное число шагов до вопроса о табу/границах. Быстрая проверка совместимости.\n\n` +
+        `💬 <b>NORMAL MODE</b> — Обычный Wingman для свободной беседы.\n\n` +
+        `🎯 <b>DATE MODE</b> — Совместимость подтверждена, только закрытие на реальную встречу.`;
+
+    const inlineKeyboard = [
+        [{ text: '🔞 SEX MODE (Поиск табу)', callback_data: 'mode_SEX' }],
+        [{ text: '💬 NORMAL MODE (Беседа)', callback_data: 'mode_NORMAL' }],
+        [{ text: '🎯 DATE MODE (Закрытие)', callback_data: 'mode_DATE' }]
+    ];
+
+    await Telegram.sendMessage(chatId, msg, {
+        replyMarkup: { inline_keyboard: inlineKeyboard }
+    });
+}
+
+/**
+ * Меню диалогов (девушек)
  */
 async function sendDialogsMenu(chatId, userId, db) {
     const slots = await Database.getSlots(db, userId);
@@ -51,12 +74,12 @@ async function sendDialogsMenu(chatId, userId, db) {
     const inlineKeyboard = [];
     slots.forEach(slot => {
         const mark = slot.active ? '🟢' : '⚪️';
-        const temp = slot.temperature || '1/10';
+        const steps = slot.stepsToTaboo === 0 ? '🔥 МОЖНО СПРАШИВАТЬ' : `~${slot.stepsToTaboo || 1} шага до табу`;
         msg += `${mark} <b>${slot.id}. ${slot.name}</b> (${slot.platform || 'Tinder'})\n`;
-        msg += `   🌡 Температура: <b>${temp}</b> | Реплик: ${slot.turnsCount || 0}\n\n`;
+        msg += `   🔞 Режим: <b>${slot.mode || 'SEX'}</b> | Дистанция: <b>${steps}</b>\n\n`;
 
         inlineKeyboard.push([{
-            text: `${mark} ${slot.id}. ${slot.name}`,
+            text: `${mark} ${slot.id}. ${slot.name} (${slot.platform || 'Tinder'})`,
             callback_data: `slot_select_${slot.id}`
         }]);
     });
@@ -69,38 +92,20 @@ async function sendDialogsMenu(chatId, userId, db) {
 }
 
 /**
- * Отправить выбор платформы
- */
-async function sendPlatformMenu(chatId) {
-    const platforms = ['Tinder', 'Pure', 'Bumble', 'Mamba', 'Telegram'];
-    const buttons = platforms.map(p => [{
-        text: `📱 ${p}`,
-        callback_data: `platform_${p}`
-    }]);
-
-    await Telegram.sendMessage(chatId, '🎯 <b>Выбери платформу текущей переписки:</b>', {
-        replyMarkup: { inline_keyboard: buttons }
-    });
-}
-
-/**
  * Главный процессор входящих Telegram Updates
  */
 async function processEmanuelUpdate(update, db) {
     if (!update || typeof update !== 'object') return;
 
-    // Дедупликация
     if (update.update_id && isDuplicate(update.update_id)) {
         return;
     }
 
-    // 1. Callback Query (Inline кнопки)
     if (update.callback_query) {
         await handleCallbackQuery(update.callback_query, db);
         return;
     }
 
-    // 2. Обычное сообщение
     if (update.message) {
         await handleUserMessage(update.message, db);
     }
@@ -116,27 +121,24 @@ async function handleCallbackQuery(cb, db) {
 
     await Telegram.answerCallbackQuery(cb.id);
 
-    // Выбор слота: slot_select_1
+    // Выбор слота
     if (data.startsWith('slot_select_')) {
         const slotId = data.replace('slot_select_', '');
         const chosen = await Database.switchSlot(db, userId, slotId);
         const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `🎯 Активный диалог переключен на: <b>«${chosen.name}»</b> (${chosen.platform || 'Tinder'})\nВсе новые реплики и скриншоты идут в её контекст.`, {
+        await Telegram.sendMessage(chatId, `🎯 Переключено на: <b>«${chosen.name}»</b> (${chosen.platform || 'Tinder'})\nРежим: <b>${chosen.mode || 'SEX'}</b>`, {
             replyMarkup: kb
         });
         return;
     }
 
-    // Выбор платформы: platform_Tinder
-    if (data.startsWith('platform_')) {
-        const platform = data.replace('platform_', '');
-        const active = await Database.getActiveSlot(db, userId);
-        await Database.renameActiveSlot(db, userId, active.name, platform);
-        const settings = await Database.getUserSettings(db, userId);
-        settings.platform = platform;
-        await Database.setUserSettings(db, userId, settings);
+    // Смена режима
+    if (data.startsWith('mode_')) {
+        const newMode = data.replace('mode_', '');
+        const activeSlot = await Database.getActiveSlot(db, userId);
+        await Database.setSlotMode(db, userId, activeSlot.id, newMode);
         const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `✅ Платформа для <b>«${active.name}»</b> установлена: <b>${platform}</b>`, {
+        await Telegram.sendMessage(chatId, `✅ Для <b>«${activeSlot.name}»</b> установлен режим: <b>${newMode} MODE</b>`, {
             replyMarkup: kb
         });
         return;
@@ -154,47 +156,51 @@ async function handleUserMessage(message, db) {
 
     if (!chatId || !userId) return;
 
-    // 1. Настройки из WebApp
-    if (message.web_app_data && message.web_app_data.data) {
-        try {
-            const data = JSON.parse(message.web_app_data.data);
-            if (data.action === 'save_settings' && data.settings) {
-                await Database.setUserSettings(db, userId, data.settings);
-                const kb = await getMainKeyboard(db, userId);
-                const confirmMsg =
-                    `⚙️ <b>Настройки Emanuel OS обновлены!</b>\n\n` +
-                    `🎯 <b>Цель:</b> ${data.settings.goal || 'hookup'}\n` +
-                    `📱 <b>Платформа:</b> ${data.settings.platform || 'Tinder'}\n` +
-                    `⚡ <b>Тональность:</b> ${data.settings.tone || 'confident'}\n` +
-                    `🚀 <b>Эскалация:</b> ${data.settings.escalation || 'optimal'}`;
-                await Telegram.sendMessage(chatId, confirmMsg, { replyMarkup: kb });
-                return;
-            }
-        } catch(e) {}
+    // 1. Кнопка смены режима
+    if (text === '⚙️ Режимы' || text === '/modes') {
+        await sendModeMenu(chatId, userId, db);
+        return;
     }
 
-    // 2. Кнопка «Мои диалоги»
+    // 2. Быстрое переключение режима
+    if (text.includes('SEX MODE') || text === '/sex') {
+        const activeSlot = await Database.getActiveSlot(db, userId);
+        await Database.setSlotMode(db, userId, activeSlot.id, 'SEX');
+        const kb = await getMainKeyboard(db, userId);
+        await Telegram.sendMessage(chatId, `🔞 Режим для <b>«${activeSlot.name}»</b>: <b>SEX MODE</b> (Ищем кратчайший путь к проверке табу).`, { replyMarkup: kb });
+        return;
+    }
+
+    if (text === '🎯 DATE / Встреча' || text === '/date') {
+        const activeSlot = await Database.getActiveSlot(db, userId);
+        await Database.setSlotMode(db, userId, activeSlot.id, 'DATE');
+        const kb = await getMainKeyboard(db, userId);
+        await Telegram.sendMessage(chatId, `🎯 Режим для <b>«${activeSlot.name}»</b>: <b>DATE MODE</b> (Сфокусирован только на закрытии на встречу).`, { replyMarkup: kb });
+        return;
+    }
+
+    // 3. Кнопка «⚡ Быстрее к вопросу»
+    if (text === '⚡ Быстрее к вопросу' || text === '/fast') {
+        await handleFastTrackRequest(chatId, user, userId, db);
+        return;
+    }
+
+    // 4. Кнопка «Мои диалоги»
     if (text.startsWith('💃') || text === '/dialogs' || text === '/girls') {
         await sendDialogsMenu(chatId, userId, db);
         return;
     }
 
-    // 3. Очистить память текущей девушки
+    // 5. Очистить память текущей девушки
     if (text === '➕ Новый диалог' || text === '/new' || text === '/reset' || text === '/clear') {
         const slot = await Database.getActiveSlot(db, userId);
         await Database.clearSlotHistory(db, userId, slot.id);
         const kb = await getMainKeyboard(db, userId);
-        await Telegram.sendMessage(chatId, `✨ Память диалога <b>«${slot.name}»</b> очищена. Начинаем общение с чистого листа!`, { replyMarkup: kb });
+        await Telegram.sendMessage(chatId, `✨ Память диалога <b>«${slot.name}»</b> очищена. Начинаем с чистого листа!`, { replyMarkup: kb });
         return;
     }
 
-    // 4. Смена платформы
-    if (text === '🎯 Платформа') {
-        await sendPlatformMenu(chatId);
-        return;
-    }
-
-    // 5. Быстрое переключение по номеру: /girl 1, /girl 2
+    // 6. Быстрое переключение по номеру: /girl 1..5
     const girlMatch = text.match(/^\/girl\s*(\d)/i);
     if (girlMatch) {
         const slot = await Database.switchSlot(db, userId, girlMatch[1]);
@@ -203,7 +209,7 @@ async function handleUserMessage(message, db) {
         return;
     }
 
-    // 6. Переименование: /rename Катя Pure
+    // 7. Переименование: /rename Катя Pure
     if (/^\/(rename|name)\s+\S/i.test(text)) {
         const newName = text.replace(/^\/(rename|name)\s+/, '').trim();
         const slot = await Database.renameActiveSlot(db, userId, newName);
@@ -212,72 +218,89 @@ async function handleUserMessage(message, db) {
         return;
     }
 
-    // 7. Системные команды (/start, /help)
+    // 8. Системные команды (/start, /help)
     if (text === '/start' || text === '/help') {
         const kb = await getMainKeyboard(db, userId);
         const welcome =
-            `🔥 <b>Привет, ${user.first_name || 'Дмитрий'}! Я твой цифровой Wingman (Emanuel Dating OS).</b>\n\n` +
-            `Я анализирую реплики девушек и даю 3 выверенных варианта ответа (Мягкий, Уверенный, Дерзкий) с органичной эскалацией к табу и встрече.\n\n` +
+            `🔞 <b>Emanuel Dating OS — AI Wingman для быстрой проверки сексуальной совместимости.</b>\n\n` +
+            `Моя задача — избавить тебя от недель пустой переписки и как можно быстрее и естественнее определить совместимость через вопрос о табу/границах.\n\n` +
             `📱 <b>Как со мной работать:</b>\n` +
-            `• 💬 <b>Текст:</b> Просто отправь сюда реплику девушки (я воспринимаю любой текст как её слова).\n` +
-            `• 📸 <b>Скриншот:</b> Пришли скриншот переписки из Tinder/Pure/Bumble/TG — я распознаю его через Gemini Vision.\n` +
-            `• 💃 <b>Слоты девушек:</b> Кнопка внизу переключает контекст между разными девушками.\n` +
-            `• ⚙️ <b>Emanuel OS:</b> Нажми кнопку для тонкой настройки целей и дерзости.`;
+            `• 💬 <b>Текст:</b> Просто отправь сюда реплику девушки — я сразу посчитаю дистанцию до вопроса о сексе и дам 3 варианта ответа.\n` +
+            `• 📸 <b>Скриншот:</b> Пришли скриншот диалога — Gemini Vision распознает контекст.\n` +
+            `• ⚡ <b>Кнопка «Быстрее к вопросу»:</b> Заставит меня срезать всю воду и выйти на тему секса прямо сейчас.\n` +
+            `• 💃 <b>Слоты девушек:</b> Кнопка внизу переключает между разными девушками.`;
         await Telegram.sendMessage(chatId, welcome, { replyMarkup: kb });
         return;
     }
 
-    // 8. СКРИНШОТ (фото)
+    // 9. СКРИНШОТ (фото)
     if (message.photo && message.photo.length > 0) {
         await Telegram.sendChatAction(chatId, 'upload_photo');
         const fileId = message.photo[message.photo.length - 1].file_id;
-        await processMediaInput(chatId, user, userId, fileId, message.caption, db);
+        await processMediaInput(chatId, user, userId, fileId, message.caption, false, db);
         return;
     }
 
-    // 9. СКРИНШОТ (файл-изображение)
+    // 10. СКРИНШОТ (файл-изображение)
     if (message.document && message.document.mime_type && message.document.mime_type.startsWith('image/')) {
         await Telegram.sendChatAction(chatId, 'upload_photo');
-        await processMediaInput(chatId, user, userId, message.document.file_id, message.caption, db);
+        await processMediaInput(chatId, user, userId, message.document.file_id, message.caption, false, db);
         return;
     }
 
-    // 10. ПО ДЕФОЛТУ: ЛЮБОЙ ТЕКСТ — ЭТО РЕПЛИКА ДЕВУШКИ
+    // 11. ПО ДЕФОЛТУ: ЛЮБОЙ ТЕКСТ — ЭТО РЕПЛИКА ДЕВУШКИ
     if (text) {
         await Telegram.sendChatAction(chatId, 'typing');
-        await processTextInput(chatId, user, userId, text, db);
+        await processTextInput(chatId, user, userId, text, false, db);
     }
+}
+
+/**
+ * Обработка запроса «⚡ Быстрее к вопросу»
+ */
+async function handleFastTrackRequest(chatId, user, userId, db) {
+    const activeSlot = await Database.getActiveSlot(db, userId);
+    const history = await Database.getHistory(db, userId, activeSlot.id, 6);
+
+    if (history.length === 0) {
+        await Telegram.sendMessage(chatId, `⚡ Чтобы срезать путь к вопросу о табу, сначала пришли последнее сообщение девушки (или скриншот диалога с <b>«${activeSlot.name}»</b>)!`);
+        return;
+    }
+
+    const lastTurn = history[history.length - 1];
+    await Telegram.sendChatAction(chatId, 'typing');
+    await processTextInput(chatId, user, userId, lastTurn.girl || 'Привет', true, db);
 }
 
 /**
  * Обработка текста реплики девушки
  */
-async function processTextInput(chatId, user, userId, text, db) {
+async function processTextInput(chatId, user, userId, text, fastTrack = false, db) {
     try {
         const userSettings = await Database.getUserSettings(db, userId);
         const activeSlot   = await Database.getActiveSlot(db, userId);
         const history      = await Database.getHistory(db, userId, activeSlot.id, 8);
 
-        // Генерация ответа через ИИ
         const result = await AI.generateAdvice({
             text: text,
+            mode: activeSlot.mode || 'SEX',
+            fastTrack: fastTrack,
             userSettings: userSettings,
             dialogHistory: history
         });
 
-        // Клавиатура
         const kb = await getMainKeyboard(db, userId);
-
-        // Отправляем ответ пользователю в Telegram
         await Telegram.sendMessage(chatId, result.content, { replyMarkup: kb });
 
-        // Сохраняем шаг в историю
         if (result.success) {
-            await Database.addTurn(db, userId, activeSlot.id, text, result.content, result.gist, result.temperature);
+            await Database.addTurn(db, userId, activeSlot.id, text, result.content, result.gist, {
+                stepsToTaboo: result.stepsToTaboo,
+                tactic: result.tactic,
+                compatibilityRadar: result.compatibilityRadar
+            });
         }
 
-        // Логирование
-        await Database.logAction(db, userId, 'TEXT', text, result.content, result.durationMs);
+        await Database.logAction(db, userId, fastTrack ? 'FAST_TRACK' : 'TEXT', text, result.content, result.durationMs);
 
     } catch (err) {
         console.error('processTextInput error:', err);
@@ -289,13 +312,12 @@ async function processTextInput(chatId, user, userId, text, db) {
 /**
  * Обработка скриншота переписки
  */
-async function processMediaInput(chatId, user, userId, fileId, caption, db) {
+async function processMediaInput(chatId, user, userId, fileId, caption, fastTrack = false, db) {
     try {
         const userSettings = await Database.getUserSettings(db, userId);
         const activeSlot   = await Database.getActiveSlot(db, userId);
         const history      = await Database.getHistory(db, userId, activeSlot.id, 8);
 
-        // Скачиваем фото из Telegram
         const imageBase64 = await Telegram.getFileAsBase64(fileId);
         if (!imageBase64) {
             const kb = await getMainKeyboard(db, userId);
@@ -303,10 +325,11 @@ async function processMediaInput(chatId, user, userId, fileId, caption, db) {
             return;
         }
 
-        // Генерация ответа через Gemini Vision
         const result = await AI.generateAdvice({
             imageBase64: imageBase64,
             text: caption || '',
+            mode: activeSlot.mode || 'SEX',
+            fastTrack: fastTrack,
             userSettings: userSettings,
             dialogHistory: history
         });
@@ -315,7 +338,11 @@ async function processMediaInput(chatId, user, userId, fileId, caption, db) {
         await Telegram.sendMessage(chatId, result.content, { replyMarkup: kb });
 
         if (result.success) {
-            await Database.addTurn(db, userId, activeSlot.id, caption || '[Скриншот диалога]', result.content, result.gist, result.temperature);
+            await Database.addTurn(db, userId, activeSlot.id, caption || '[Скриншот диалога]', result.content, result.gist, {
+                stepsToTaboo: result.stepsToTaboo,
+                tactic: result.tactic,
+                compatibilityRadar: result.compatibilityRadar
+            });
         }
 
         await Database.logAction(db, userId, 'PHOTO', caption || '[Скриншот]', result.content, result.durationMs);
@@ -330,5 +357,6 @@ async function processMediaInput(chatId, user, userId, fileId, caption, db) {
 module.exports = {
     processEmanuelUpdate,
     getMainKeyboard,
-    sendDialogsMenu
+    sendDialogsMenu,
+    sendModeMenu
 };

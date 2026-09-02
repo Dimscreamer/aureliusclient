@@ -193,6 +193,25 @@
     </div>
   </div>
 
+  <!-- 0. Стратегия / Режим -->
+  <div class="card">
+    <div class="card-title">🔞 Стратегия / Режим</div>
+    <div class="options-grid" id="group-mode">
+      <div class="option-btn active full-width" data-val="SEX">
+        🔞 SEX MODE (Главный)
+        <span class="desc">Минимальное число шагов до табу, ранняя проверка совместимости</span>
+      </div>
+      <div class="option-btn" data-val="NORMAL">
+        💬 NORMAL
+        <span class="desc">Свободная беседа</span>
+      </div>
+      <div class="option-btn" data-val="DATE">
+        🎯 DATE
+        <span class="desc">Закрытие на встречу</span>
+      </div>
+    </div>
+  </div>
+
   <!-- 1. Платформа -->
   <div class="card">
     <div class="card-title">📱 Платформа переписки</div>
@@ -256,6 +275,7 @@
     }
 
     const state = {
+      mode: 'SEX',
       platform: 'Tinder',
       goal: 'hookup',
       tone: 'confident',
@@ -276,6 +296,7 @@
       });
     }
 
+    setupGroup('group-mode', 'mode');
     setupGroup('group-platform', 'platform');
     setupGroup('group-goal', 'goal');
     setupGroup('group-tone', 'tone');

@@ -931,26 +931,40 @@
             </div>
 
             <!-- ========================================== -->
-            <!-- 🔥 EMANUEL DATING OS (WINGMAN) VIEW       -->
+            <!-- 🔞 EMANUEL DATING OS (SEX MODE) VIEW      -->
             <!-- ========================================== -->
             <div id="emanuel-view" class="view-section p-5 md:p-10">
                 <div class="max-w-7xl mx-auto space-y-6 pb-20">
                     <!-- Header Banner -->
-                    <div class="flex items-center justify-between flex-wrap gap-4 glass rounded-2xl p-5 border border-white/5">
+                    <div class="flex items-center justify-between flex-wrap gap-4 glass rounded-2xl p-5 border border-white/5 shadow-2xl">
                         <div class="flex items-center gap-3.5">
-                            <div class="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-500/30 text-rose-500 shadow-lg shadow-rose-500/10">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center border border-rose-400/40 text-white shadow-lg shadow-rose-500/20">
                                 <i data-lucide="flame" class="w-6 h-6"></i>
                             </div>
                             <div>
                                 <div class="flex items-center gap-2">
                                     <h3 class="text-white font-black text-lg uppercase tracking-wider">Emanuel Dating OS</h3>
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30 uppercase tracking-widest">Wingman Core</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30 uppercase tracking-widest">Compatibility Radar</span>
                                 </div>
-                                <span class="text-xs text-slate-400">Персональный ИИ-ассистент флирта, эскалации и романтической коммуникации</span>
+                                <span class="text-xs text-slate-400">Быстрая проверка сексуальной совместимости через вопрос о табу и границах</span>
                             </div>
                         </div>
+
+                        <!-- Mode Switcher in Header -->
+                        <div class="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+                            <button id="emanuel-btn-mode-sex" onclick="window.EmanuelOS.setMode('SEX')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-rose-500 text-white shadow-sm">
+                                <span>🔞 SEX</span>
+                            </button>
+                            <button id="emanuel-btn-mode-normal" onclick="window.EmanuelOS.setMode('NORMAL')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+                                <span>💬 NORMAL</span>
+                            </button>
+                            <button id="emanuel-btn-mode-date" onclick="window.EmanuelOS.setMode('DATE')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white">
+                                <span>🎯 DATE</span>
+                            </button>
+                        </div>
+
                         <div class="flex items-center gap-3">
-                            <a href="https://t.me/emanuellovebot" target="_blank" class="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-xl font-bold text-xs flex items-center gap-2 transition">
+                            <a href="https://t.me/emanuellovebot" target="_blank" class="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-xl font-bold text-xs flex items-center gap-2 transition">
                                 <i data-lucide="send" class="w-3.5 h-3.5"></i> @emanuellovebot
                             </a>
                             <button onclick="window.EmanuelOS.loadData()" class="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl text-slate-300 transition" title="Обновить">
@@ -959,7 +973,34 @@
                         </div>
                     </div>
 
-                    <!-- Main Grid: Left Column (Slots & Settings), Right Column (Simulator & Chat) -->
+                    <!-- Target Gateway Status Strip -->
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div class="md:col-span-8 glass rounded-2xl p-4 border border-rose-500/20 bg-gradient-to-r from-rose-950/30 via-slate-900/60 to-slate-900/60 flex items-center justify-between flex-wrap gap-4">
+                            <div class="flex items-center gap-3">
+                                <div id="emanuel-steps-badge" class="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-extrabold text-sm flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                                    <span id="emanuel-steps-text">Дистанция: ~1 шаг до табу</span>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Стратегия шлюза</div>
+                                    <div id="emanuel-tactic-text" class="text-xs font-bold text-white">🔥 BUILD (Короткий мостик)</div>
+                                </div>
+                            </div>
+                            <button onclick="window.EmanuelOS.fastTrackAdvice()" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-rose-500/20 flex items-center gap-2 transition active:scale-95">
+                                <i data-lucide="zap" class="w-4 h-4"></i>
+                                <span>Быстрее к вопросу</span>
+                            </button>
+                        </div>
+                        <div class="md:col-span-4 glass rounded-2xl p-4 border border-white/5 flex items-center justify-between">
+                            <div>
+                                <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Активный диалог</div>
+                                <div id="emanuel-current-girl-title" class="text-sm font-bold text-rose-400">Загрузка...</div>
+                            </div>
+                            <span id="emanuel-active-platform-badge" class="px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] font-mono text-slate-300">Tinder</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Grid: Left Column (Slots & Config), Right Column (Simulator & History) -->
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         <!-- LEFT COLUMN: Slots (5 girls) & Settings -->
                         <div class="lg:col-span-4 space-y-6">
@@ -967,10 +1008,10 @@
                             <div class="glass rounded-2xl p-5 border border-white/5 space-y-4">
                                 <div class="flex items-center justify-between border-b border-white/5 pb-3">
                                     <div class="flex items-center gap-2">
-                                        <i data-lucide="heart" class="w-4 h-4 text-rose-400"></i>
+                                        <i data-lucide="users" class="w-4 h-4 text-rose-400"></i>
                                         <h4 class="text-white font-bold text-xs uppercase tracking-wider">Слоты девушек (5)</h4>
                                     </div>
-                                    <span class="text-[10px] text-slate-500 font-mono">Мульти-контекст</span>
+                                    <span class="text-[10px] text-slate-500 font-mono">Автономный контекст</span>
                                 </div>
                                 <div id="emanuel-slots-list" class="space-y-2">
                                     <!-- Dynamic Slot Items -->
@@ -982,13 +1023,13 @@
                                 <div class="flex items-center justify-between border-b border-white/5 pb-3">
                                     <div class="flex items-center gap-2">
                                         <i data-lucide="sliders" class="w-4 h-4 text-rose-400"></i>
-                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">Настройки генератора</h4>
+                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">Параметры диалога</h4>
                                     </div>
                                     <button onclick="window.EmanuelOS.saveSettings()" class="text-[10px] text-rose-400 font-bold uppercase tracking-wider hover:underline">
                                         Сохранить
                                     </button>
                                 </div>
-                                <div class="space-y-3.5 text-xs">
+                                <div class="space-y-3 text-xs">
                                     <div class="space-y-1">
                                         <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Платформа</label>
                                         <select id="emanuel-setting-platform" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-slate-200">
@@ -997,32 +1038,6 @@
                                             <option value="Bumble">🐝 Bumble</option>
                                             <option value="Mamba">💋 Mamba / Badoo</option>
                                             <option value="Telegram">✈️ Telegram</option>
-                                        </select>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Главная цель</label>
-                                        <select id="emanuel-setting-goal" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-slate-200">
-                                            <option value="hookup">⚡ Быстрый секс / Hookup (1-2 встречи)</option>
-                                            <option value="fwb">🥂 Свободные отношения / FWB</option>
-                                            <option value="relationship">💍 Отношения / Romance</option>
-                                            <option value="fun">🎉 Флирт и драйв</option>
-                                        </select>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Тональность реплик</label>
-                                        <select id="emanuel-setting-tone" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-slate-200">
-                                            <option value="gentle">🌸 Тактичный и мягкий</option>
-                                            <option value="confident">😎 Уверенный и остроумный</option>
-                                            <option value="bold">🔥 Дерзкий (секс-напряжение)</option>
-                                            <option value="alpha">👑 Альфа (доминантная позиция)</option>
-                                        </select>
-                                    </div>
-                                    <div class="space-y-1">
-                                        <label class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Скорость перехода к табу</label>
-                                        <select id="emanuel-setting-escalation" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2 text-slate-200">
-                                            <option value="turbo">⚡ Турбо (3-5 сообщений)</option>
-                                            <option value="optimal">⚖️ Оптимальная (6-10 сообщений)</option>
-                                            <option value="smooth">🌊 Плавная (12-18 сообщений)</option>
                                         </select>
                                     </div>
                                 </div>
@@ -1036,11 +1051,9 @@
                                 <div class="flex items-center justify-between border-b border-white/5 pb-3">
                                     <div class="flex items-center gap-2">
                                         <i data-lucide="sparkles" class="w-4 h-4 text-rose-400"></i>
-                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">
-                                            Генератор реплик для: <span id="emanuel-current-girl-title" class="text-rose-400">Загрузка...</span>
-                                        </h4>
+                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">Входящее сообщение / Скриншот</h4>
                                     </div>
-                                    <span class="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">Gemini 2.5 Flash</span>
+                                    <span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">Gemini 2.5 Flash</span>
                                 </div>
 
                                 <!-- Textarea -->
@@ -1069,18 +1082,23 @@
                                         <button onclick="document.getElementById('emanuel-photo-input').click()" 
                                                 class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-2 border border-slate-700/60">
                                             <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                                            <span>Прикрепить скриншот</span>
+                                            <span>Скриншот</span>
                                         </button>
                                     </div>
-                                    <button id="emanuel-generate-btn" onclick="window.EmanuelOS.generateAdvice()" 
-                                            class="px-6 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-rose-500/20 flex items-center gap-2">
-                                        <i data-lucide="zap" class="w-4 h-4"></i>
-                                        <span>Сгенерировать 3 варианта</span>
-                                    </button>
+                                    <div class="flex items-center gap-2">
+                                        <button id="emanuel-generate-btn" onclick="window.EmanuelOS.generateAdvice()" 
+                                                class="px-6 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-rose-500/20 flex items-center gap-2">
+                                            <i data-lucide="zap" class="w-4 h-4"></i>
+                                            <span>Сгенерировать варианты</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <!-- Result Area -->
-                                <div id="emanuel-advice-result-wrap" class="hidden border-t border-white/5 pt-4">
+                                <div id="emanuel-advice-result-wrap" class="hidden border-t border-white/5 pt-4 space-y-4">
+                                    <!-- Dynamic Compatibility Radar Banner -->
+                                    <div id="emanuel-radar-banner" class="hidden"></div>
+                                    <!-- Dynamic 3 Options -->
                                     <div id="emanuel-advice-result"></div>
                                 </div>
                             </div>
@@ -1090,7 +1108,7 @@
                                 <div class="flex items-center justify-between border-b border-white/5 pb-3">
                                     <div class="flex items-center gap-2">
                                         <i data-lucide="messages-square" class="w-4 h-4 text-rose-400"></i>
-                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">История переписки слота</h4>
+                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">История диалога слота</h4>
                                     </div>
                                     <button onclick="window.EmanuelOS.loadHistory()" class="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 transition">
                                         <i data-lucide="rotate-cw" class="w-3 h-3"></i> Обновить
@@ -1176,15 +1194,15 @@
     </main>
 
     <!-- Наши разделенные файлы логики (Classic Scripts) -->
-    <script src="/js/config.js?v=1788305000000"></script>
-    <script src="/js/state.js?v=1788305000000"></script>
-    <script src="/js/helpers.js?v=1788305000000"></script>
-    <script src="/js/api.js?v=1788305000000"></script>
-    <script src="/js/ui.js?v=1788305000000"></script>
-    <script src="/js/ares_os.js?v=1788305000000"></script>
-    <script src="/js/emanuel.js?v=1788305000000"></script>
+    <script src="/js/config.js?v=1788306000000"></script>
+    <script src="/js/state.js?v=1788306000000"></script>
+    <script src="/js/helpers.js?v=1788306000000"></script>
+    <script src="/js/api.js?v=1788306000000"></script>
+    <script src="/js/ui.js?v=1788306000000"></script>
+    <script src="/js/ares_os.js?v=1788306000000"></script>
+    <script src="/js/emanuel.js?v=1788306000000"></script>
     
     <!-- Точка входа (ES модуль для импорта Firebase) -->
-    <script type="module" src="/js/app.js?v=1788305000000"></script>
+    <script type="module" src="/js/app.js?v=1788306000000"></script>
 </body>
 </html>

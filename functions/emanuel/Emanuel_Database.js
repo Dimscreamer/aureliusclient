@@ -1,28 +1,26 @@
 /**
- * 🗄️ Emanuel_Database.js — Firestore Хранилище для Emanuel Dating OS
+ * 🗄️ Emanuel_Database.js — Firestore Хранилище для Emanuel Dating OS (SEX MODE)
  */
 const admin = require('firebase-admin');
 
 const DEFAULT_SLOTS = [
-    { id: '1', name: 'Аня (Tinder)', platform: 'Tinder', active: true, temperature: '3/10', turnsCount: 0 },
-    { id: '2', name: 'Катя (Pure)', platform: 'Pure', active: false, temperature: '6/10', turnsCount: 0 },
-    { id: '3', name: 'Лера (Bumble)', platform: 'Bumble', active: false, temperature: '4/10', turnsCount: 0 },
-    { id: '4', name: 'Девушка #4', platform: 'Tinder', active: false, temperature: '2/10', turnsCount: 0 },
-    { id: '5', name: 'Девушка #5', platform: 'Telegram', active: false, temperature: '1/10', turnsCount: 0 }
+    { id: '1', name: 'Аня (Tinder)', platform: 'Tinder', mode: 'SEX', stepsToTaboo: 1, active: true, turnsCount: 0 },
+    { id: '2', name: 'Катя (Pure)', platform: 'Pure', mode: 'SEX', stepsToTaboo: 0, active: false, turnsCount: 0 },
+    { id: '3', name: 'Лера (Bumble)', platform: 'Bumble', mode: 'SEX', stepsToTaboo: 1, active: false, turnsCount: 0 },
+    { id: '4', name: 'Девушка #4', platform: 'Tinder', mode: 'SEX', stepsToTaboo: 2, active: false, turnsCount: 0 },
+    { id: '5', name: 'Девушка #5', platform: 'Telegram', mode: 'SEX', stepsToTaboo: 2, active: false, turnsCount: 0 }
 ];
 
 const DEFAULT_SETTINGS = {
+    mode: 'SEX',
+    platform: 'Tinder',
     goal: 'hookup',
     tone: 'confident',
     escalation: 'optimal',
-    platform: 'Tinder',
     model: 'google/gemini-2.5-flash'
 };
 
 class EmanuelDatabase {
-    /**
-     * Получить настройки пользователя
-     */
     async getUserSettings(db, userId) {
         const uId = String(userId || '451682370');
         try {
@@ -36,9 +34,6 @@ class EmanuelDatabase {
         return DEFAULT_SETTINGS;
     }
 
-    /**
-     * Сохранить настройки пользователя
-     */
     async setUserSettings(db, userId, settings) {
         const uId = String(userId || '451682370');
         try {
@@ -53,9 +48,6 @@ class EmanuelDatabase {
         }
     }
 
-    /**
-     * Получить слоты пользователя
-     */
     async getSlots(db, userId) {
         const uId = String(userId || '451682370');
         try {
@@ -64,7 +56,6 @@ class EmanuelDatabase {
                 return snapshot.docs.map(doc => doc.data());
             }
 
-            // Если слотов нет — инициализируем 5 базовых слотов
             const batch = db.batch();
             DEFAULT_SLOTS.forEach(slot => {
                 const ref = db.collection('emanuel_users').doc(uId).collection('slots').doc(slot.id);
@@ -81,9 +72,6 @@ class EmanuelDatabase {
         }
     }
 
-    /**
-     * Получить активный слот
-     */
     async getActiveSlot(db, userId) {
         const slots = await this.getSlots(db, userId);
         let active = slots.find(s => s.active);
@@ -94,9 +82,6 @@ class EmanuelDatabase {
         return active;
     }
 
-    /**
-     * Переключить активный слот
-     */
     async switchSlot(db, userId, slotId) {
         const uId = String(userId || '451682370');
         const slots = await this.getSlots(db, userId);
@@ -111,7 +96,6 @@ class EmanuelDatabase {
             batch.update(ref, { active: isActive });
         });
 
-        // Сохраняем activeSlotId на уровне пользователя
         batch.set(db.collection('emanuel_users').doc(uId), {
             activeSlotId: sId,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -121,9 +105,20 @@ class EmanuelDatabase {
         return chosen || slots[0];
     }
 
-    /**
-     * Переименовать активный слот
-     */
+    async setSlotMode(db, userId, slotId, mode) {
+        const uId = String(userId || '451682370');
+        const sId = String(slotId || '1');
+        const validModes = ['SEX', 'NORMAL', 'DATE'];
+        const cleanMode = validModes.includes(mode) ? mode : 'SEX';
+
+        await db.collection('emanuel_users').doc(uId).collection('slots').doc(sId).set({
+            mode: cleanMode,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        return cleanMode;
+    }
+
     async renameActiveSlot(db, userId, newName, platform = null) {
         const uId = String(userId || '451682370');
         const active = await this.getActiveSlot(db, userId);
@@ -139,10 +134,7 @@ class EmanuelDatabase {
         return active;
     }
 
-    /**
-     * Получить историю диалога конкретной девушки
-     */
-    async getHistory(db, userId, slotId, maxTurns = 8) {
+    async getHistory(db, userId, slotId, maxTurns = 12) {
         const uId = String(userId || '451682370');
         const sId = String(slotId || '1');
         try {
@@ -157,10 +149,7 @@ class EmanuelDatabase {
         }
     }
 
-    /**
-     * Добавить шаг в диалог (реплика девушки + ответ Wingman)
-     */
-    async addTurn(db, userId, slotId, girlText, fullAdvice, gist, temperature = null) {
+    async addTurn(db, userId, slotId, girlText, fullAdvice, gist, extra = {}) {
         const uId = String(userId || '451682370');
         const sId = String(slotId || '1');
         try {
@@ -169,18 +158,21 @@ class EmanuelDatabase {
 
             await turnsRef.add({
                 girl: String(girlText || '').substring(0, 500),
-                wingman: String(gist || '').substring(0, 300),
+                wingman: String(gist || '').substring(0, 350),
                 fullAdvice: fullAdvice || '',
+                stepsToTaboo: extra.stepsToTaboo ?? 1,
+                tactic: extra.tactic || 'BUILD',
                 timestamp: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // Обновляем метаданные слота
             const slotUpdate = {
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                lastGist: String(gist || '').substring(0, 100),
+                lastGist: String(gist || '').substring(0, 120),
                 turnsCount: admin.firestore.FieldValue.increment(1)
             };
-            if (temperature) slotUpdate.temperature = temperature;
+            if (typeof extra.stepsToTaboo === 'number') slotUpdate.stepsToTaboo = extra.stepsToTaboo;
+            if (extra.tactic) slotUpdate.tactic = extra.tactic;
+            if (extra.compatibilityRadar) slotUpdate.compatibility = extra.compatibilityRadar;
 
             await db.collection('emanuel_users').doc(uId).collection('slots').doc(sId).set(slotUpdate, { merge: true });
         } catch (e) {
@@ -188,9 +180,6 @@ class EmanuelDatabase {
         }
     }
 
-    /**
-     * Очистить историю слота
-     */
     async clearSlotHistory(db, userId, slotId) {
         const uId = String(userId || '451682370');
         const sId = String(slotId || '1');
@@ -203,7 +192,9 @@ class EmanuelDatabase {
             batch.update(db.collection('emanuel_users').doc(uId).collection('slots').doc(sId), {
                 turnsCount: 0,
                 lastGist: '',
-                temperature: '1/10',
+                stepsToTaboo: 1,
+                compatibility: null,
+                mode: 'SEX',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
             await batch.commit();
@@ -214,9 +205,6 @@ class EmanuelDatabase {
         }
     }
 
-    /**
-     * Логирование операций
-     */
     async logAction(db, userId, type, input, output, durationMs = 0) {
         try {
             await db.collection('emanuel_logs').add({

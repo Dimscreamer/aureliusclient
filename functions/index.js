@@ -938,25 +938,39 @@ ${transcript}`;
             return res.json({ success: true });
         }
 
+        if (data.action === 'emanuel_setSlotMode') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const mode = await Database.setSlotMode(db, userId, data.slotId, data.mode);
+            return res.json({ success: true, mode });
+        }
+
         if (data.action === 'emanuel_generateAdvice') {
             const { AI, Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
             const activeSlot = await Database.getActiveSlot(db, userId);
             const userSettings = data.settings || (await Database.getUserSettings(db, userId));
             const history = await Database.getHistory(db, userId, activeSlot.id, 8);
+            const mode = data.mode || activeSlot.mode || 'SEX';
 
             const result = await AI.generateAdvice({
                 text: data.text || '',
                 imageBase64: data.imageBase64 || null,
+                mode: mode,
+                fastTrack: !!data.fastTrack,
                 userSettings: userSettings,
                 dialogHistory: history
             });
 
             if (result.success && data.saveToHistory) {
-                await Database.addTurn(db, userId, activeSlot.id, data.text || '[Скриншот]', result.content, result.gist, result.temperature);
+                await Database.addTurn(db, userId, activeSlot.id, data.text || '[Скриншот]', result.content, result.gist, {
+                    stepsToTaboo: result.stepsToTaboo,
+                    tactic: result.tactic,
+                    compatibilityRadar: result.compatibilityRadar
+                });
             }
 
-            await Database.logAction(db, userId, data.imageBase64 ? 'CRM_PHOTO' : 'CRM_TEXT', data.text || '[Скриншот]', result.content, result.durationMs);
+            await Database.logAction(db, userId, data.fastTrack ? 'CRM_FAST' : (data.imageBase64 ? 'CRM_PHOTO' : 'CRM_TEXT'), data.text || '[Скриншот]', result.content, result.durationMs);
 
             return res.json(result);
         }
