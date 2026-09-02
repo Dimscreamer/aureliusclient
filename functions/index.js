@@ -919,6 +919,20 @@ ${transcript}`;
             return res.json({ success: true });
         }
 
+        if (data.action === 'emanuel_archiveSession') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            await Database.archiveSession(db, userId, data.sessionId);
+            return res.json({ success: true });
+        }
+
+        if (data.action === 'emanuel_restoreSession') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            await Database.restoreSession(db, userId, data.sessionId);
+            return res.json({ success: true });
+        }
+
         if (data.action === 'emanuel_deleteSession') {
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
@@ -930,7 +944,11 @@ ${transcript}`;
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
             const sessionId = data.sessionId || data.slotId;
-            await Database.clearSessionHistory(db, userId, sessionId);
+            const historySnap = await db.collection('emanuel_users').doc(String(userId))
+                .collection('sessions').doc(String(sessionId)).collection('turns').get();
+            const batch = db.batch();
+            historySnap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
             return res.json({ success: true });
         }
 
@@ -945,14 +963,14 @@ ${transcript}`;
         if (data.action === 'emanuel_leadMe') {
             const { AI, Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const sessions = await Database.getSessions(db, userId);
+            const sessions = await Database.getSessions(db, userId, 'active');
             const summary = sessions.map(s => ({
+                id: s.id,
                 name: s.name,
-                mode: s.mode || 'SEX',
+                state: s.state || 'BUILD',
                 stepsToTaboo: s.stepsToTaboo,
-                tactic: s.tactic,
-                lastGist: s.lastGist || '',
-                turnsCount: s.turnsCount || 0
+                turnsCount: s.turnsCount || 0,
+                lastMessage: s.lastMessage || ''
             }));
             const analysis = await AI.generateLeadMeAnalysis(summary);
             return res.json(analysis);
@@ -972,14 +990,6 @@ ${transcript}`;
             return res.json({ success: true });
         }
 
-        if (data.action === 'emanuel_setSessionMode' || data.action === 'emanuel_setSlotMode') {
-            const { Database } = require('./emanuel');
-            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
-            const sessionId = data.sessionId || data.slotId;
-            const mode = await Database.setSessionMode(db, userId, sessionId, data.mode);
-            return res.json({ success: true, mode });
-        }
-
         if (data.action === 'emanuel_generateAdvice') {
             const { AI, Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
@@ -987,27 +997,30 @@ ${transcript}`;
             const userSettings = data.settings || (await Database.getUserSettings(db, userId));
             const sessionId = data.sessionId || activeSession.id;
             const history = await Database.getHistory(db, userId, sessionId, 8);
-            const mode = data.mode || activeSession.mode || 'SEX';
 
             const result = await AI.generateAdvice({
                 text: data.text || '',
                 girlName: activeSession.name,
+                sessionId: activeSession.id,
+                currentState: activeSession.state || 'BUILD',
                 imageBase64: data.imageBase64 || null,
-                mode: mode,
                 fastTrack: !!data.fastTrack,
+                isAlternative: !!data.isAlternative,
                 userSettings: userSettings,
                 dialogHistory: history
             });
 
             if (result.success && data.saveToHistory) {
-                await Database.addTurn(db, userId, sessionId, data.text || '[Скриншот]', result.content, result.gist, {
+                await Database.addTurn(db, userId, sessionId, data.text || '[Скриншот]', result.reply, {
+                    state: result.state,
                     stepsToTaboo: result.stepsToTaboo,
-                    tactic: result.tactic,
-                    compatibilityRadar: result.compatibilityRadar
+                    nextAction: result.nextAction,
+                    reason: result.reason,
+                    confidence: result.confidence
                 });
             }
 
-            await Database.logAction(db, userId, data.fastTrack ? 'CRM_FAST' : (data.imageBase64 ? 'CRM_PHOTO' : 'CRM_TEXT'), data.text || '[Скриншот]', result.content, result.durationMs);
+            await Database.logAction(db, userId, data.fastTrack ? 'CRM_FAST' : (data.imageBase64 ? 'CRM_PHOTO' : 'CRM_TEXT'), data.text || '[Скриншот]', result.reply, result.durationMs);
 
             return res.json(result);
         }

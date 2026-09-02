@@ -1,5 +1,5 @@
 /**
- * 🧠 Emanuel_AI.js — OpenRouter & Gemini Vision Интеграция (TIME TO COMPATIBILITY Engine)
+ * 🧠 Emanuel_AI.js — OpenRouter & Gemini Integration с JSON-контрактом
  */
 const axios = require('axios');
 const { EMANUEL_CONFIG } = require('./Emanuel_Config');
@@ -10,47 +10,48 @@ class EmanuelAI {
     }
 
     /**
-     * Генерация рекомендаций и вариантов ответа с вычислением шагов до табу
+     * Генерация одного лучшего хода со строгим JSON-контрактом
      */
     async generateAdvice(params) {
         const apiKey = EMANUEL_CONFIG.OPENROUTER_KEY;
         if (!apiKey) throw new Error('OPENROUTER_KEY не настроен');
 
-        const mode = params.mode || 'SEX';
-        const fastTrack = !!params.fastTrack;
         const girlName = params.girlName || 'Девушка';
+        const sessionId = params.sessionId || 'session_default';
+        const currentState = params.currentState || 'BUILD';
+        const fastTrack = !!params.fastTrack;
+        const isAlternative = !!params.isAlternative;
 
         const systemPrompt = EMANUEL_CONFIG.getSystemPrompt({
-            mode,
+            girlName,
+            sessionId,
+            currentState,
             fastTrack,
-            girlName
+            isAlternative
         });
 
         const messages = [
             { role: 'system', content: systemPrompt }
         ];
 
-        // Добавляем естественную историю переписки (девушка -> ответ Wingman -> девушка)
+        // История диалога
         if (params.dialogHistory && Array.isArray(params.dialogHistory) && params.dialogHistory.length > 0) {
             params.dialogHistory.forEach(turn => {
-                if (turn.girl) {
-                    messages.push({ role: 'user', content: turn.girl });
-                }
-                if (turn.wingman) {
-                    messages.push({ role: 'assistant', content: turn.wingman });
-                }
+                if (turn.girl) messages.push({ role: 'user', content: turn.girl });
+                if (turn.wingman) messages.push({ role: 'assistant', content: turn.wingman });
             });
         }
 
-        // Входной контент текущего шага
+        // Вход текущего шага
         const currentContent = [];
-        let promptPrefix = `[Девушка: ${girlName}] [Режим: ${mode}]\n`;
-        if (fastTrack) promptPrefix += `[Команда: ⚡ БЫСТРЕЕ К ВОПРОСУ / СРЕЗАТЬ ПУТЬ К ТАБУ]\n`;
+        let promptPrefix = `[Сессия девушки: ${girlName}] [ID: ${sessionId}] [Текущее состояние: ${currentState}]\n`;
+        if (fastTrack) promptPrefix += `[РУЧНОЙ OVERRIDE: ⚡ БЫСТРЕЕ К ВОПРОСУ]\n`;
+        if (isAlternative) promptPrefix += `[РУЧНОЙ ЗАПРОС: 🔄 ДРУГОЙ ВАРИАНТ]\n`;
 
         if (params.text) {
             promptPrefix += `[Сообщение девушки]: "${params.text}"`;
         } else {
-            promptPrefix += `[Скриншот переписки]`;
+            promptPrefix += `[Скриншот переписки девушки]`;
         }
 
         currentContent.push({ type: 'text', text: promptPrefix });
@@ -68,14 +69,15 @@ class EmanuelAI {
             model: EMANUEL_CONFIG.AI_MODEL,
             messages: messages,
             temperature: EMANUEL_CONFIG.TEMPERATURE,
-            max_tokens: EMANUEL_CONFIG.MAX_TOKENS
+            max_tokens: EMANUEL_CONFIG.MAX_TOKENS,
+            response_format: { type: "json_object" }
         };
 
         const headers = {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://aureliusclients.web.app',
-            'X-Title': 'Emanuel Dating OS'
+            'X-Title': 'Emanuel Dating OS Core'
         };
 
         const startTime = Date.now();
@@ -85,12 +87,10 @@ class EmanuelAI {
 
             if (res.data?.choices && res.data.choices.length > 0) {
                 const rawContent = res.data.choices[0].message.content;
-                const parsed = this.parseResponse(rawContent);
+                const parsed = this.parseJsonSafe(rawContent, girlName);
 
                 return {
                     success: true,
-                    mode: mode,
-                    content: rawContent,
                     ...parsed,
                     durationMs: durationMs,
                     tokens: res.data.usage || {}
@@ -98,7 +98,8 @@ class EmanuelAI {
             }
             return {
                 success: false,
-                content: '⚠️ Не удалось получить ответ от ИИ.',
+                reply: '⚠️ Не удалось получить ответ от ИИ.',
+                reason: 'Пустой ответ модели',
                 durationMs: durationMs
             };
         } catch (err) {
@@ -107,21 +108,68 @@ class EmanuelAI {
             const errDetail = err.response?.data?.error?.message || err.message;
             return {
                 success: false,
-                content: `⚠️ Ошибка генерации через ИИ (${err.response?.status || 'Network'}): ${errDetail}`,
+                reply: `⚠️ Ошибка ИИ (${err.response?.status || 'Network'}): ${errDetail}`,
+                reason: errDetail,
                 durationMs: durationMs
             };
         }
     }
 
     /**
-     * Анализ всех активных сессий пользователя («🧭 Веди меня»)
+     * Безопасный парсинг JSON ответа от модели
+     */
+    parseJsonSafe(rawContent, girlName) {
+        let jsonStr = rawContent.trim();
+
+        // Очистка от ```json ... ``` если модель завернула
+        if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+        }
+
+        try {
+            const obj = JSON.parse(jsonStr);
+            const state = obj.state || 'BUILD';
+            const stepsToTaboo = typeof obj.steps_to_taboo === 'number' ? obj.steps_to_taboo : (state === 'READY_FOR_TABU' ? 0 : 1);
+            const nextAction = obj.next_action || (stepsToTaboo === 0 ? 'ASK_TABU' : 'BUILD_COMFORT');
+            const reply = String(obj.reply || '').trim();
+            const reason = String(obj.reason || '').trim();
+            const confidence = typeof obj.confidence === 'number' ? obj.confidence : 0.85;
+
+            return {
+                state,
+                stepsToTaboo,
+                nextAction,
+                reply,
+                reason,
+                confidence,
+                rawJson: obj
+            };
+        } catch (e) {
+            console.warn('Fallback JSON parse error:', e.message, 'Raw:', rawContent);
+            // Fallback если JSON сбит
+            const replyMatch = rawContent.match(/"reply"\s*:\s*"([^"]+)"/);
+            const reply = replyMatch ? replyMatch[1] : rawContent.replace(/[{}"\\]/g, '').trim();
+
+            return {
+                state: 'BUILD',
+                stepsToTaboo: 1,
+                nextAction: 'BUILD_COMFORT',
+                reply: reply,
+                reason: 'Определено через fallback парсер',
+                confidence: 0.7
+            };
+        }
+    }
+
+    /**
+     * Анализ сессий для сводки «🧭 Веди меня» (Фокусный Топ-3)
      */
     async generateLeadMeAnalysis(sessionsSummary) {
         const apiKey = EMANUEL_CONFIG.OPENROUTER_KEY;
         if (!apiKey) throw new Error('OPENROUTER_KEY не настроен');
 
         const systemPrompt = EMANUEL_CONFIG.getLeadMePrompt();
-        const userContent = `Список моих активных диалогов:\n\n` + JSON.stringify(sessionsSummary, null, 2);
+        const userContent = `Мои активные диалоги:\n` + JSON.stringify(sessionsSummary, null, 2);
 
         const payload = {
             model: EMANUEL_CONFIG.AI_MODEL,
@@ -129,92 +177,46 @@ class EmanuelAI {
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userContent }
             ],
-            temperature: 0.6,
-            max_tokens: 1200
+            temperature: 0.5,
+            max_tokens: 1000,
+            response_format: { type: "json_object" }
         };
 
         const headers = {
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://aureliusclients.web.app',
-            'X-Title': 'Emanuel Dating OS Lead Me'
+            'X-Title': 'Emanuel Lead Me'
         };
 
         try {
-            const res = await axios.post(this.apiUrl, payload, { headers, timeout: 25000 });
+            const res = await axios.post(this.apiUrl, payload, { headers, timeout: 20000 });
             if (res.data?.choices && res.data.choices.length > 0) {
-                return {
-                    success: true,
-                    analysis: res.data.choices[0].message.content
-                };
+                const raw = res.data.choices[0].message.content.trim();
+                let clean = raw;
+                if (clean.startsWith('```')) {
+                    clean = clean.replace(/^```(json)?\n?/, '').replace(/```$/, '').trim();
+                }
+                const parsed = JSON.parse(clean);
+                return { success: true, ...parsed };
             }
-            return { success: false, analysis: '⚠️ Не удалось сформировать отчёт.' };
+            return { success: false, items: [], summary: 'Нет данных' };
         } catch (e) {
-            console.error('LeadMe error:', e.message);
-            return { success: false, analysis: `⚠️ Ошибка: ${e.message}` };
-        }
-    }
-
-    /**
-     * Парсинг ответа ИИ в структурированные поля
-     */
-    parseResponse(text) {
-        if (!text) return {};
-
-        // 1. Шаги до табу
-        let stepsToTaboo = 1;
-        if (text.includes('0 шагов') || text.includes('МОЖНО СПРАШИВАТЬ')) {
-            stepsToTaboo = 0;
-        } else if (text.includes('3 шаг') || text.includes('~3')) {
-            stepsToTaboo = 3;
-        } else if (text.includes('2 шаг') || text.includes('~2')) {
-            stepsToTaboo = 2;
-        } else if (text.includes('1 шаг') || text.includes('~1')) {
-            stepsToTaboo = 1;
-        }
-
-        // 2. Стратегия
-        let tactic = 'BUILD';
-        if (text.includes('DIRECT') || stepsToTaboo === 0) tactic = 'DIRECT';
-        else if (text.includes('RESET')) tactic = 'RESET';
-
-        // 3. Извлечение вариантов в кавычках «...»
-        const quotes = [];
-        const regex = /«([^»]+)»/g;
-        let m;
-        while ((m = regex.exec(text)) !== null) {
-            quotes.push(m[1].trim());
-        }
-
-        const mainReply = quotes[0] || '';
-        const softerReply = quotes[1] || '';
-        const bolderReply = quotes[2] || '';
-
-        // 4. Анализ Compatibility Radar
-        let compatibilityRadar = null;
-        if (text.includes('COMPATIBILITY RADAR') || text.includes('Совместимость:')) {
-            const isCompatible = text.includes('ВЫСОКАЯ') || text.includes('СОВМЕСТИМ') || text.includes('DATE MODE') || text.includes('встреч');
-            const isLow = text.includes('НИЗКАЯ') || text.includes('НЕСОВМЕСТИМ') || text.includes('СТОП') || text.includes('Стоп');
-
-            compatibilityRadar = {
-                active: true,
-                isCompatible: isCompatible && !isLow,
-                rating: isCompatible && !isLow ? 'Высокая' : 'Низкая (Несовместимы)',
-                verdict: isCompatible && !isLow 
-                    ? '🔥 Совместимость подтверждена! Закрывай на встречу, хватит переписок.' 
-                    : '❄️ Стоп. Совместимость низкая. Не трать время, выходи красиво.'
+            console.error('LeadMe AI error:', e.message);
+            // Умный локальный fallback, если OpenRouter не ответил
+            const items = sessionsSummary.slice(0, 3).map(s => ({
+                sessionId: s.id,
+                name: s.name,
+                badge: s.stepsToTaboo === 0 ? '🔥' : (s.state === 'DATE_CLOSING' ? '🎯' : '🟡'),
+                statusText: s.stepsToTaboo === 0 ? 'Можно переходить к вопросу о табу' : (s.state === 'DATE_CLOSING' ? 'Совместимость подтверждена! Закрывай на встречу' : 'Нужен небольшой разгон'),
+                action: s.stepsToTaboo === 0 ? 'ASK_TABU' : (s.state === 'DATE_CLOSING' ? 'CLOSE_DATE' : 'BUILD')
+            }));
+            return {
+                success: true,
+                items: items,
+                summary: 'Рекомендации сформированы на основе состояния диалогов.'
             };
         }
-
-        return {
-            stepsToTaboo,
-            tactic,
-            mainReply,
-            softerReply,
-            bolderReply,
-            gist: mainReply || (quotes[0] || '').substring(0, 150),
-            compatibilityRadar
-        };
     }
 }
 

@@ -1,156 +1,123 @@
 /**
- * 🗄️ Emanuel_Database.js — Динамическое Firestore хранилище (N-сессий, без платформ)
+ * 🗄️ Emanuel_Database.js — Строгая модель состояния, activeSessionId и жизненный цикл сессий
  */
 const admin = require('firebase-admin');
 
-const DEFAULT_SESSIONS = [
-    { id: 'session_1', name: 'Алина', mode: 'SEX', stepsToTaboo: 1, tactic: 'BUILD', active: true, turnsCount: 0 },
-    { id: 'session_2', name: 'Катя', mode: 'SEX', stepsToTaboo: 2, tactic: 'BUILD', active: false, turnsCount: 0 },
-    { id: 'session_3', name: 'Света', mode: 'SEX', stepsToTaboo: 0, tactic: 'DIRECT', active: false, turnsCount: 0 }
-];
-
-const DEFAULT_SETTINGS = {
-    mode: 'SEX',
-    style: {
-        humor: 6,
-        directness: 7,
-        boldness: 6,
-        length: 'optimal'
-    },
-    sex_mode: {
-        speed: 'fast',
-        directness: 'direct',
-        auto_moment: true
-    }
-};
-
 class EmanuelDatabase {
-    async getUserSettings(db, userId) {
+    async getUserDoc(db, userId) {
         const uId = String(userId || '451682370');
-        try {
-            const doc = await db.collection('emanuel_users').doc(uId).get();
-            if (doc.exists && doc.data().settings) {
-                return { ...DEFAULT_SETTINGS, ...doc.data().settings };
-            }
-        } catch (e) {
-            console.error('Error fetching user settings:', e);
+        const ref = db.collection('emanuel_users').doc(uId);
+        const doc = await ref.get();
+        if (doc.exists) {
+            return { ref, data: doc.data() };
         }
-        return DEFAULT_SETTINGS;
+        const initial = {
+            activeSessionId: null,
+            userState: null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        await ref.set(initial);
+        return { ref, data: initial };
     }
 
-    async setUserSettings(db, userId, settings) {
-        const uId = String(userId || '451682370');
-        try {
-            await db.collection('emanuel_users').doc(uId).set({
-                settings: settings,
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            }, { merge: true });
-            return true;
-        } catch (e) {
-            console.error('Error saving user settings:', e);
-            return false;
-        }
+    async getUserState(db, userId) {
+        const { data } = await this.getUserDoc(db, userId);
+        return data?.userState || null;
     }
 
-    async getSessions(db, userId) {
+    async setUserState(db, userId, state) {
+        const uId = String(userId || '451682370');
+        await db.collection('emanuel_users').doc(uId).set({
+            userState: state || null,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    }
+
+    async getSessions(db, userId, statusFilter = 'active') {
         const uId = String(userId || '451682370');
         try {
-            const snapshot = await db.collection('emanuel_users').doc(uId)
-                .collection('sessions').orderBy('updatedAt', 'desc').get();
-
-            if (!snapshot.empty) {
-                return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            let query = db.collection('emanuel_users').doc(uId).collection('sessions');
+            if (statusFilter) {
+                query = query.where('status', '==', statusFilter);
+            } else {
+                query = query.where('status', '!=', 'deleted');
             }
 
-            // Миграция со старых слотов если они были
-            const oldSlotsSnapshot = await db.collection('emanuel_users').doc(uId).collection('slots').get();
-            if (!oldSlotsSnapshot.empty) {
-                const batch = db.batch();
-                const migrated = [];
-                for (const oldDoc of oldSlotsSnapshot.docs) {
-                    const data = oldDoc.data();
-                    const sId = `session_${data.id || oldDoc.id}`;
-                    const sessionData = {
-                        id: sId,
-                        name: data.name ? data.name.replace(/\s*\([^)]*\)/g, '').trim() : `Девушка #${oldDoc.id}`,
-                        mode: data.mode || 'SEX',
-                        stepsToTaboo: typeof data.stepsToTaboo === 'number' ? data.stepsToTaboo : 1,
-                        tactic: data.tactic || 'BUILD',
-                        active: !!data.active,
-                        turnsCount: data.turnsCount || 0,
-                        lastGist: data.lastGist || '',
-                        compatibility: data.compatibility || null,
-                        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-                    };
-                    batch.set(db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId), sessionData);
-                    migrated.push(sessionData);
-                }
-                await batch.commit();
-                return migrated;
+            const snap = await query.get();
+            if (!snap.empty) {
+                const sessions = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                // Сортируем по updatedAt локально (избегая composite index требования в Firestore)
+                sessions.sort((a, b) => {
+                    const tA = a.updatedAt?._seconds || 0;
+                    const tB = b.updatedAt?._seconds || 0;
+                    return tB - tA;
+                });
+                return sessions;
             }
 
-            // Инициализация дефолтных сессий
-            const batch = db.batch();
-            const created = [];
-            DEFAULT_SESSIONS.forEach(s => {
-                const ref = db.collection('emanuel_users').doc(uId).collection('sessions').doc(s.id);
-                const sData = {
-                    ...s,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-                };
-                batch.set(ref, sData);
-                created.push(sData);
-            });
-            await batch.commit();
-            return created;
+            // Если сессий нет вообще, инициализируем стартовую
+            if (statusFilter === 'active') {
+                const starter = await this.createSession(db, userId, 'Марина');
+                return [starter];
+            }
+            return [];
         } catch (e) {
-            console.error('Error getting sessions:', e);
-            return DEFAULT_SESSIONS;
+            console.error('Error in getSessions:', e);
+            return [];
         }
     }
 
     async getActiveSession(db, userId) {
-        const sessions = await this.getSessions(db, userId);
-        let active = sessions.find(s => s.active);
-        if (!active && sessions.length > 0) {
-            active = sessions[0];
-            await this.switchSession(db, userId, active.id);
+        const uId = String(userId || '451682370');
+        const { data } = await this.getUserDoc(db, userId);
+        const activeId = data?.activeSessionId;
+
+        if (activeId) {
+            const doc = await db.collection('emanuel_users').doc(uId).collection('sessions').doc(activeId).get();
+            if (doc.exists && doc.data().status === 'active') {
+                return { id: doc.id, ...doc.data() };
+            }
         }
-        return active || DEFAULT_SESSIONS[0];
+
+        // Если активной нет или удалена — берём первую попавшуюся активную
+        const activeSessions = await this.getSessions(db, userId, 'active');
+        if (activeSessions.length > 0) {
+            const first = activeSessions[0];
+            await this.switchSession(db, userId, first.id);
+            return first;
+        }
+
+        // Если активных нет — создаём новую
+        const created = await this.createSession(db, userId, 'Марина');
+        return created;
     }
 
     async createSession(db, userId, name) {
         const uId = String(userId || '451682370');
-        const cleanName = String(name || 'Новая девушка').trim().substring(0, 35);
+        const cleanName = String(name || 'Девушка').trim().substring(0, 35) || 'Девушка';
         const sId = `session_${Date.now()}`;
-
-        // Деактивируем остальные
-        const currentSessions = await this.getSessions(db, userId);
-        const batch = db.batch();
-        currentSessions.forEach(s => {
-            const ref = db.collection('emanuel_users').doc(uId).collection('sessions').doc(s.id);
-            batch.update(ref, { active: false });
-        });
 
         const newSession = {
             id: sId,
             name: cleanName,
-            mode: 'SEX',
+            status: 'active', // 'active' | 'archived' | 'deleted'
+            state: 'BUILD', // 'BUILD' | 'READY_FOR_TABU' | 'TABU_ASKED' | 'DATE_CLOSING' | 'INCOMPATIBLE'
+            confidence: 0.85,
             stepsToTaboo: 1,
-            tactic: 'BUILD',
-            active: true,
+            nextAction: 'BUILD_COMFORT',
+            lastReply: '',
+            reason: '',
             turnsCount: 0,
-            lastGist: '',
-            compatibility: null,
+            lastMessage: '',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         };
 
+        const batch = db.batch();
         batch.set(db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId), newSession);
         batch.set(db.collection('emanuel_users').doc(uId), {
             activeSessionId: sId,
+            userState: null,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
@@ -160,47 +127,62 @@ class EmanuelDatabase {
 
     async switchSession(db, userId, sessionId) {
         const uId = String(userId || '451682370');
-        const sessions = await this.getSessions(db, userId);
         const sId = String(sessionId);
-        let chosen = null;
 
-        const batch = db.batch();
-        sessions.forEach(s => {
-            const ref = db.collection('emanuel_users').doc(uId).collection('sessions').doc(s.id);
-            const isActive = (s.id === sId);
-            if (isActive) chosen = { ...s, active: true };
-            batch.update(ref, { active: isActive });
-        });
+        const doc = await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).get();
+        if (!doc.exists) {
+            return await this.getActiveSession(db, userId);
+        }
 
-        batch.set(db.collection('emanuel_users').doc(uId), {
+        await db.collection('emanuel_users').doc(uId).set({
             activeSessionId: sId,
+            userState: null,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        await batch.commit();
-        return chosen || sessions[0];
+        return { id: doc.id, ...doc.data() };
     }
 
-    async setSessionMode(db, userId, sessionId, mode) {
+    async archiveSession(db, userId, sessionId) {
         const uId = String(userId || '451682370');
         const sId = String(sessionId);
-        const validModes = ['SEX', 'NORMAL', 'DATE'];
-        const cleanMode = validModes.includes(mode) ? mode : 'SEX';
 
         await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set({
-            mode: cleanMode,
+            status: 'archived',
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        return cleanMode;
+        // Если архивировали активную сессию — переключаем на следующую активную
+        const { data } = await this.getUserDoc(db, userId);
+        if (data?.activeSessionId === sId) {
+            const remaining = await this.getSessions(db, userId, 'active');
+            if (remaining.length > 0) {
+                await this.switchSession(db, userId, remaining[0].id);
+            }
+        }
+        return true;
+    }
+
+    async restoreSession(db, userId, sessionId) {
+        const uId = String(userId || '451682370');
+        const sId = String(sessionId);
+
+        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set({
+            status: 'active',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        await this.switchSession(db, userId, sId);
+        return true;
     }
 
     async renameSession(db, userId, sessionId, newName) {
         const uId = String(userId || '451682370');
+        const sId = String(sessionId);
         const cleanName = String(newName || '').trim().substring(0, 35);
         if (!cleanName) return;
 
-        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(String(sessionId)).update({
+        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).update({
             name: cleanName,
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -209,28 +191,56 @@ class EmanuelDatabase {
     async deleteSession(db, userId, sessionId) {
         const uId = String(userId || '451682370');
         const sId = String(sessionId);
-        try {
-            // Удаляем подколлекцию turns
-            const turnsSnap = await db.collection('emanuel_users').doc(uId)
-                .collection('sessions').doc(sId).collection('turns').get();
-            const batch = db.batch();
-            turnsSnap.docs.forEach(doc => batch.delete(doc.ref));
-            batch.delete(db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId));
-            await batch.commit();
 
-            // Переключаемся на первую попавшуюся сессию, если удалили активную
-            const remaining = await this.getSessions(db, userId);
+        // Мягкое удаление (status: deleted)
+        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set({
+            status: 'deleted',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        const { data } = await this.getUserDoc(db, userId);
+        if (data?.activeSessionId === sId) {
+            const remaining = await this.getSessions(db, userId, 'active');
             if (remaining.length > 0) {
                 await this.switchSession(db, userId, remaining[0].id);
             }
-            return true;
-        } catch (e) {
-            console.error('Error deleting session:', e);
-            return false;
         }
+        return true;
     }
 
-    async getHistory(db, userId, sessionId, maxTurns = 15) {
+    async addTurn(db, userId, sessionId, girlText, wingmanReply, meta = {}) {
+        const uId = String(userId || '451682370');
+        const sId = String(sessionId);
+
+        const turnsRef = db.collection('emanuel_users').doc(uId)
+            .collection('sessions').doc(sId).collection('turns');
+
+        await turnsRef.add({
+            girl: String(girlText || '').substring(0, 500),
+            wingman: String(wingmanReply || '').substring(0, 500),
+            state: meta.state || 'BUILD',
+            reason: meta.reason || '',
+            stepsToTaboo: meta.stepsToTaboo ?? 1,
+            nextAction: meta.nextAction || 'BUILD_COMFORT',
+            timestamp: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const updateData = {
+            lastMessage: String(girlText || '').substring(0, 100),
+            lastReply: String(wingmanReply || '').substring(0, 100),
+            state: meta.state || 'BUILD',
+            stepsToTaboo: typeof meta.stepsToTaboo === 'number' ? meta.stepsToTaboo : 1,
+            nextAction: meta.nextAction || 'BUILD_COMFORT',
+            reason: meta.reason || '',
+            confidence: meta.confidence || 0.85,
+            turnsCount: admin.firestore.FieldValue.increment(1),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set(updateData, { merge: true });
+    }
+
+    async getHistory(db, userId, sessionId, maxTurns = 12) {
         const uId = String(userId || '451682370');
         const sId = String(sessionId);
         try {
@@ -245,60 +255,18 @@ class EmanuelDatabase {
         }
     }
 
-    async addTurn(db, userId, sessionId, girlText, fullAdvice, gist, extra = {}) {
-        const uId = String(userId || '451682370');
-        const sId = String(sessionId);
-        try {
-            const turnsRef = db.collection('emanuel_users').doc(uId)
-                .collection('sessions').doc(sId).collection('turns');
-
-            await turnsRef.add({
-                girl: String(girlText || '').substring(0, 500),
-                wingman: String(gist || '').substring(0, 350),
-                fullAdvice: fullAdvice || '',
-                stepsToTaboo: extra.stepsToTaboo ?? 1,
-                tactic: extra.tactic || 'BUILD',
-                timestamp: admin.firestore.FieldValue.serverTimestamp()
-            });
-
-            const sessionUpdate = {
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                lastGist: String(gist || '').substring(0, 140),
-                turnsCount: admin.firestore.FieldValue.increment(1)
-            };
-            if (typeof extra.stepsToTaboo === 'number') sessionUpdate.stepsToTaboo = extra.stepsToTaboo;
-            if (extra.tactic) sessionUpdate.tactic = extra.tactic;
-            if (extra.compatibilityRadar) sessionUpdate.compatibility = extra.compatibilityRadar;
-
-            await db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId).set(sessionUpdate, { merge: true });
-        } catch (e) {
-            console.error('Error adding turn:', e);
-        }
+    async getUserSettings(db, userId) {
+        const { data } = await this.getUserDoc(db, userId);
+        return data?.settings || { mode: 'SEX' };
     }
 
-    async clearSessionHistory(db, userId, sessionId) {
+    async setUserSettings(db, userId, settings) {
         const uId = String(userId || '451682370');
-        const sId = String(sessionId);
-        try {
-            const snapshot = await db.collection('emanuel_users').doc(uId)
-                .collection('sessions').doc(sId).collection('turns').get();
-
-            const batch = db.batch();
-            snapshot.docs.forEach(doc => batch.delete(doc.ref));
-            batch.update(db.collection('emanuel_users').doc(uId).collection('sessions').doc(sId), {
-                turnsCount: 0,
-                lastGist: '',
-                stepsToTaboo: 1,
-                compatibility: null,
-                mode: 'SEX',
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-            await batch.commit();
-            return true;
-        } catch (e) {
-            console.error('Error clearing session history:', e);
-            return false;
-        }
+        await db.collection('emanuel_users').doc(uId).set({
+            settings: settings,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return true;
     }
 
     async logAction(db, userId, type, input, output, durationMs = 0) {
