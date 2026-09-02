@@ -484,11 +484,13 @@ async function handleUserMessage(message, db) {
 
     if (text === '⚙️ Настройки' || text === '/settings') {
         const kb = await getMainKeyboard(db, userId);
+        await Telegram.setChatMenuButton(chatId);
         await Telegram.sendMessage(chatId, `⚙️ Панель управления и WebApp:\nhttps://aureliusclients.web.app/emanuel_app.html`, { replyMarkup: kb });
         return;
     }
 
     if (text === '/start' || text === '/help') {
+        await Telegram.setChatMenuButton(chatId);
         const kb = await getMainKeyboard(db, userId);
         const welcome =
             `🔞 <b>Emanuel — персональный тактический AI Wingman мужчины.</b>\n\n` +

@@ -128,6 +128,26 @@ class EmanuelTelegram {
             return null;
         }
     }
+
+    /**
+     * Установка кнопки меню WebApp
+     */
+    async setChatMenuButton(chatId = null, url = null, text = '🔞 Emanuel OS') {
+        try {
+            const webAppUrl = url || EMANUEL_CONFIG.WEB_APP_URL || 'https://aureliusclients.web.app/emanuel_app.html';
+            const payload = {
+                menu_button: {
+                    type: 'web_app',
+                    text: text,
+                    web_app: { url: webAppUrl }
+                }
+            };
+            if (chatId) payload.chat_id = String(chatId);
+            await axios.post(`${this.apiUrl}/setChatMenuButton`, payload, { timeout: 10000 });
+        } catch (e) {
+            console.error('Error setting chat menu button:', e.message);
+        }
+    }
 }
 
 module.exports = new EmanuelTelegram();
