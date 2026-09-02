@@ -729,6 +729,154 @@ exports.api = onRequest({ cors: true, maxInstances: 10 }, async (req, res) => {
             return res.json(cfg);
         }
 
+        
+        // === CLIENT TELEGRAM CHAT HISTORY & AI PSYCHOTYPE ===
+        if (data.action === 'getClientChatHistory') {
+            const clientId = (data.clientId || '').toString().trim();
+            if (!clientId) return res.status(400).json({ success: false, error: 'clientId required' });
+
+            const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days
+            try {
+                const snap = await db.collection('client_chats')
+                    .doc(clientId)
+                    .collection('messages')
+                    .where('timestamp', '>=', cutoffDate)
+                    .orderBy('timestamp', 'asc')
+                    .get();
+
+                const messages = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                return res.json({ success: true, messages });
+            } catch (err) {
+                console.error("getClientChatHistory error:", err);
+                try {
+                    const snap2 = await db.collection('client_chats')
+                        .doc(clientId)
+                        .collection('messages')
+                        .limit(200)
+                        .get();
+                    const messages = snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    messages.sort((a, b) => {
+                        const tA = a.timestamp?._seconds || 0;
+                        const tB = b.timestamp?._seconds || 0;
+                        return tA - tB;
+                    });
+                    return res.json({ success: true, messages });
+                } catch (err2) {
+                    return res.json({ success: true, messages: [] });
+                }
+            }
+        }
+
+        if (data.action === 'generateClientPsychotype') {
+            const clientId = (data.clientId || '').toString().trim();
+            if (!clientId) return res.status(400).json({ success: false, error: 'clientId required' });
+
+            // 1. Fetch client from master
+            const masterRef = db.collection('artifacts').doc('aureliusclients').collection('public').doc('data').collection('clients_db').doc('master');
+            const masterSnap = await masterRef.get();
+            const clients = masterSnap.exists ? (masterSnap.data().clients || []) : [];
+            const clientIdx = clients.findIndex(c => c.id.toString() === clientId);
+            const client = clientIdx >= 0 ? clients[clientIdx] : null;
+
+            if (!client) {
+                return res.status(404).json({ success: false, error: 'Клиент не найден в базе' });
+            }
+
+            // 2. Fetch last 90 days messages
+            const cutoffDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+            let messages = [];
+            try {
+                const snap = await db.collection('client_chats')
+                    .doc(clientId)
+                    .collection('messages')
+                    .where('timestamp', '>=', cutoffDate)
+                    .orderBy('timestamp', 'asc')
+                    .get();
+                messages = snap.docs.map(d => d.data());
+            } catch (e) {
+                const snap = await db.collection('client_chats').doc(clientId).collection('messages').limit(300).get();
+                messages = snap.docs.map(d => d.data());
+            }
+
+            if (!messages || messages.length === 0) {
+                return res.json({
+                    success: false,
+                    error: 'За последние 90 дней нет сохраненной переписки в Telegram-чате этого клиента. Подключите чат через кнопку "Подключить чат" и напишите в группу.'
+                });
+            }
+
+            // Format transcript
+            const transcript = messages.map(m => {
+                const sender = m.isMark ? 'Марк (AI)' : (m.isAdmin ? 'Дмитрий (Агентство)' : (m.senderName || 'Клиент'));
+                const date = m.date || '';
+                const time = m.time || '';
+                return `[${date} ${time}] ${sender}: ${m.text}`;
+            }).join('\n');
+
+            // 3. Call LLM
+            const systemPrompt = `Ты — Марк, ведущий аналитик и стратег агентства Aurelius Ads.
+Твоя задача — провести глубокий психологический, операционный и стратегический анализ клиента на основе РЕАЛЬНОЙ переписки за последние 3 месяца (90 дней).
+
+СФОРМУЛИРУЙ АНАЛИЗ ПО СЛЕДУЮЩЕЙ ЧЕТКОЙ СТРУКТУРЕ (пиши четко, емко, без воды, используя списки):
+
+1. 🧠 ПСИХОТИП И СТИЛЬ КОММУНИКАЦИИ
+- Темперамент и скорость принятия решений (быстрый/взвешенный/тревожный/доверчивый).
+- Предпочитаемый формат отчетов (язык цифр и KPI, емкие голосовые, детальные таблицы или краткие выжимки).
+- Отношение к инициативе и экспериментам.
+
+2. 📊 УРОВЕНЬ УДОВЛЕТВОРЕННОСТИ И ТОНАЛЬНОСТЬ
+- Общая эмоциональная тональность диалога.
+- Текущий уровень доверия к агентству и результатам.
+
+3. 🎯 КЛЮЧЕВЫЕ БОЛИ, СТРАХИ И ФОКУСЫ
+- За что клиент больше всего переживает (окупаемость, спад лидов, бюджет, сезонность).
+- Что для него является главным фактором успеха (ROAS, CPA, объем продаж).
+
+4. 🛠 ТЕКУЩИЕ ЗАДАЧИ И ДОГОВОРЕННОСТИ
+- О чем договаривались в последних сообщениях.
+- Открытые вопросы или задачи, требующие контроля.
+
+5. 💡 СТРАТЕГИЯ ВЕДЕНИЯ И РЕКОМЕНДАЦИИ
+- Как лучше подавать результаты и закрывать возражения.
+- Какие триггеры не использовать.
+- Потенциал расширения бюджета или апсейла.`;
+
+            const userPrompt = `Клиент: ${client.name}
+Сайт: ${client.links?.site || '—'}
+Бюджет / Оплата: ${client.amount || 0}
+Google Ads ID: ${client.adsId || '—'}
+
+ИСТОРИЯ ПЕРЕПИСКИ ИЗ ЧАТА (ПОСЛЕДНИЕ 90 ДНЕЙ):
+${transcript}`;
+
+            try {
+                const { callMarkLLM } = require('./mark/core/Mark_AI_Bridge');
+                const aiRes = await callMarkLLM({
+                    systemPrompt,
+                    userPrompt,
+                    temperature: 0.2,
+                    maxTokens: 2500
+                });
+
+                const analysisText = aiRes.reply || 'Ошибка генерации психотипа.';
+
+                // 4. Update master DB
+                clients[clientIdx].ai_analysis = analysisText;
+                await masterRef.set({ clients }, { merge: true });
+
+                await logSys('api', `Сгенерирован психотип клиента "${client.name}" на основе ${messages.length} сообщений.`);
+
+                return res.json({
+                    success: true,
+                    ai_analysis: analysisText,
+                    messagesCount: messages.length
+                });
+            } catch (llmErr) {
+                console.error("Psychotype LLM error:", llmErr);
+                return res.status(500).json({ success: false, error: 'Ошибка генерации через ИИ: ' + llmErr.message });
+            }
+        }
+
         if (data.action === 'markOsSaveConfig') {
             if (data.config) {
                 await db.collection("mark_config").doc("modules").set(data.config, { merge: true });

@@ -1,3 +1,4 @@
+const admin = require('firebase-admin');
 /**
  * ��️ Mark_Kernel.js — Главное ядро обработки и оркестрации Марка
  */
@@ -14,6 +15,44 @@ const { Module_Automation } = require('../modules/Module_Automation');
 // Память сессий и истории
 const processedUpdatesCache = new Set();
 const chatHistoryMemory = new Map();
+
+/**
+ * Сохранение сообщения в Firestore (история переписки клиента)
+ */
+async function saveClientMessage(db, client, msgData) {
+    if (!db || !client || !client.id) return;
+    try {
+        const msgId = (msgData.messageId || Date.now()).toString();
+        const dateObj = new Date();
+        const nowIso = dateObj.toISOString();
+        const dateStr = nowIso.split('T')[0];
+        const timeStr = dateObj.toLocaleTimeString('uk-UA', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit' });
+
+        await db.collection('client_chats')
+            .doc(client.id.toString())
+            .collection('messages')
+            .doc(msgId)
+            .set({
+                messageId: msgId,
+                chatId: (msgData.chatId || '').toString(),
+                clientId: client.id.toString(),
+                senderId: msgData.senderId || null,
+                senderName: msgData.senderName || 'Участник',
+                senderUsername: msgData.senderUsername || '',
+                isClient: !!msgData.isClient,
+                isAdmin: !!msgData.isAdmin,
+                isMark: !!msgData.isMark,
+                isBot: !!msgData.isBot,
+                text: msgData.text || '',
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                date: dateStr,
+                time: timeStr
+            }, { merge: true });
+    } catch (err) {
+        console.error('[Mark_Kernel] saveClientMessage error:', err.message);
+    }
+}
+
 
 /**
  * Логирование трейса в Mark_SysLogs (в формате Ареса)
@@ -255,6 +294,26 @@ async function processMarkUpdate(update, db) {
     const senderName = from.first_name || from.username || 'Клиент';
     const isPrivate = chat.type === 'private';
     const botMention = /@myconversionsbotppcdmitrobot/i.test(text);
+    const isAdmin = String(from.id) === String(MARK_CONFIG.ADMIN_CHAT_ID);
+    const isBot = !!from.is_bot;
+    const isClient = !isBot && !isAdmin;
+
+    // === 1. СОХРАНЕНИЕ СООБЩЕНИЯ В FIRESTORE ДЛЯ АРХИВА И ПСИХОТИПА ===
+    const client = await getClientByTelegramChatId(chat.id, db);
+    if (client) {
+        await saveClientMessage(db, client, {
+            messageId: msg.message_id,
+            chatId: chat.id,
+            senderId: from.id,
+            senderName: senderName,
+            senderUsername: from.username || '',
+            isClient: isClient,
+            isAdmin: isAdmin,
+            isMark: false,
+            isBot: isBot,
+            text: text
+        });
+    }
 
     // В группах Марк отвечает только при упоминании имени или команды
     const isNameCall = /(марк|марку|марке|марком|mark|маркус|marcus|аурелиус|aurelius)/i.test(text);
@@ -411,7 +470,7 @@ async function processMarkUpdate(update, db) {
     // =========================================================================
     // 3. ПРОВЕРКА КЛИЕНТА В CRM И ЛИМИТОВ
     // =========================================================================
-    const client = await getClientByTelegramChatId(chat.id, db);
+    // (client уже определен выше)
     const clientName = client?.clientName || senderName;
 
     if (!client && !isPrivate) {
@@ -483,7 +542,24 @@ ${adsContext.contextText}
     }
 
     // Отправка ответа в Telegram
-    await sendTelegramMessage(chat.id, aiRes.reply, msg.message_id);
+    const sentResp = await sendTelegramMessage(chat.id, aiRes.reply, msg.message_id);
+
+    // Сохраняем ответ Марка в историю чата
+    if (client && aiRes && aiRes.reply) {
+        const markMsgId = sentResp?.data?.result?.message_id || Date.now();
+        await saveClientMessage(db, client, {
+            messageId: markMsgId,
+            chatId: chat.id,
+            senderId: 'mark_ai',
+            senderName: 'Марк (AI)',
+            senderUsername: 'mark',
+            isClient: false,
+            isAdmin: false,
+            isMark: true,
+            isBot: true,
+            text: aiRes.reply
+        });
+    }
 
     // Обновляем память истории
     history.push({ role: 'user', content: `${senderName}: ${cleanUserPrompt}` });
@@ -535,6 +611,7 @@ ${adsContext.contextText}
 }
 
 module.exports = {
+    saveClientMessage,
     processMarkUpdate,
     getClientByTelegramChatId,
     checkAndIncrementMarkUsage,

@@ -622,3 +622,109 @@ window.syncAndCleanQueue = async () => {
     }
 };
 
+window.loadClientChatHistory = async (clientId) => {
+    const container = document.getElementById('client-chat-history');
+    const badge = document.getElementById('chat-messages-count');
+    if (!container) return;
+
+    container.innerHTML = `<div class="p-6 text-center text-gray-500 text-xs font-mono"><i data-lucide="loader-2" class="w-3.5 h-3.5 inline animate-spin mr-1.5 text-cyan-400"></i>Загрузка переписки...</div>`;
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getClientChatHistory', clientId: clientId.toString() })
+        });
+        const data = await resp.json();
+        const messages = data.messages || [];
+        if (badge) badge.innerText = `${messages.length} сообщ.`;
+
+        if (messages.length === 0) {
+            container.innerHTML = `<div class="text-center py-10 space-y-1"><p class="text-gray-600 text-[10px] uppercase font-bold">Нет сообщений за 90 дней</p><p class="text-gray-700 text-[9px]">Сообщения из чата появятся здесь автоматически</p></div>`;
+            return;
+        }
+
+        container.innerHTML = messages.map(m => {
+            const isMark = m.isMark;
+            const isAdmin = m.isAdmin;
+            
+            let bgClass = 'bg-white/[0.04] border-white/10 text-gray-200 mr-3';
+            let nameColor = 'text-emerald-400';
+            let tag = m.senderName || 'Клиент';
+            
+            if (isMark) {
+                bgClass = 'bg-cyan-950/30 border-cyan-500/30 text-cyan-100 ml-3';
+                nameColor = 'text-cyan-300';
+                tag = 'Марк AI';
+            } else if (isAdmin) {
+                bgClass = 'bg-purple-950/30 border-purple-500/30 text-purple-100 ml-3';
+                nameColor = 'text-purple-400';
+                tag = 'Агентство';
+            }
+
+            const cleanText = (m.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const dateStr = m.date ? m.date.slice(5) : '';
+            const timeStr = m.time || '';
+
+            return `
+            <div class="p-2.5 rounded-2xl border ${bgClass} text-xs space-y-1 transition-all">
+                <div class="flex items-center justify-between text-[9px] font-mono">
+                    <span class="font-bold ${nameColor}">${tag}</span>
+                    <span class="text-gray-500 font-mono">${dateStr} ${timeStr}</span>
+                </div>
+                <div class="text-[11px] leading-relaxed break-words text-gray-300 font-sans">${cleanText}</div>
+            </div>`;
+        }).join('');
+
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 100);
+
+    } catch (e) {
+        container.innerHTML = `<p class="text-red-400 text-[10px] text-center py-6">Ошибка загрузки: ${e.message}</p>`;
+    }
+};
+
+window.generateClientPsychotype = async () => {
+    if (!currentClientId) return alert("Выберите клиента");
+    const btn = document.getElementById('generate-psychotype-btn');
+    const textarea = document.getElementById('detail-ai-analysis');
+    const originalBtnText = btn ? btn.innerHTML : '';
+
+    if (btn) {
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-1.5 text-cyan-400"></i> Анализ чата (90 дней)...`;
+        btn.disabled = true;
+    }
+    if (window.lucide) lucide.createIcons();
+
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'generateClientPsychotype', clientId: currentClientId.toString() })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            if (textarea) {
+                textarea.value = data.ai_analysis;
+                textarea.classList.add('!border-cyan-500', '!bg-cyan-500/10');
+                setTimeout(() => textarea.classList.remove('!border-cyan-500', '!bg-cyan-500/10'), 2500);
+            }
+            const c = clientsData.find(x => x.id === currentClientId);
+            if (c) c.ai_analysis = data.ai_analysis;
+            alert(`✅ Психотип и срез болей успешно сгенерирован Марком на основе ${data.messagesCount || 'всех'} сообщений за 90 дней!`);
+        } else {
+            alert(`⚠️ ${data.error || 'Не удалось сгенерировать психотип'}`);
+        }
+    } catch (e) {
+        alert(`❌ Ошибка запроса: ${e.message}`);
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+        }
+        if (window.lucide) lucide.createIcons();
+    }
+};
+

@@ -610,7 +610,7 @@ window.openClientProfile = function(id, silent = false) {
     const count = document.getElementById('payment-countdown'); count.innerText = logic.label; count.style.backgroundColor = `${style.border}15`; count.style.color = style.border; count.style.borderColor = `${style.border}33`;
     const nxt = document.getElementById('next-payment-display'); nxt.innerText = logic.nextDateStr !== '—' && logic.nextDateStr !== 'Проект' ? `След. платеж: ${logic.nextDateStr}` : (logic.nextDateStr === 'Проект' ? 'Проектная работа' : 'Платеж не запланирован'); nxt.style.color = style.border;
     const log = document.getElementById('history-log'); log.innerHTML = (c.history || []).map((h, i) => `<div class="history-item"><div><span class="text-gray-600 mr-2 font-mono">${h.date}</span><span class="text-gray-300">${h.text}</span></div><button onclick="deleteHistoryItem(${i})" class="text-red-500/30 hover:text-red-500 px-2 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5"></i></button></div>`).join('') || '<p class="text-[9px] text-gray-700 uppercase italic p-4">История пуста</p>';
-    renderExtraServices(c); renderAdsAnalytics(c); renderMonthlyHistory(c); if (!silent) switchView('details'); lucide.createIcons();
+    renderExtraServices(c); renderAdsAnalytics(c); renderMonthlyHistory(c); if (typeof loadClientChatHistory === 'function') loadClientChatHistory(c.id); if (!silent) switchView('details'); lucide.createIcons();
 };
 
 
