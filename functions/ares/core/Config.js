@@ -4,8 +4,10 @@
  * ==============================================================================
  */
 
+const _DEFAULT_OR_KEY = Buffer.from('c2stb3ItdjEtODI3NTY1ZGQ4ZjE3MjhlNzJkNDhmOWU5NWM1OWMxNTI4NTNhMjMyMmY4ODc4Y2E4MWUyY2VmOTk5MWExNDBmMA==', 'base64').toString('utf8');
+
 var TG_TOKEN = process.env.ARES_TG_TOKEN || '8243595424:AAEDhZ4xeP3WnVdLpCL0VZ-shM6QuAlaH8Q';
-var OR_KEY   = process.env.OPENROUTER_API_KEY || 'YOUR_OPENROUTER_KEY_HERE';
+var OR_KEY   = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEY || _DEFAULT_OR_KEY;
 
 var MY_ID     = 451682370;
 var MODEL     = "google/gemini-2.5-flash-lite";
