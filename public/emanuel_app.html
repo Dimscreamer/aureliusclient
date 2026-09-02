@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🔥 Emanuel Dating OS</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg-color: #0d0e15;
+      --card-bg: #161922;
+      --card-border: #232736;
+      --accent: #ff3366;
+      --accent-hover: #ff1a53;
+      --accent-glow: rgba(255, 51, 102, 0.25);
+      --text-main: #f0f2f5;
+      --text-muted: #8c93a8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-family);
+      padding: 16px;
+      padding-bottom: 90px;
+      line-height: 1.5;
+    }
+
+    .header {
+      text-align: center;
+      padding: 12px 0 20px 0;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff3366 0%, #ff758c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .option-btn {
+      background: #1c202e;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px 10px;
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .option-btn .desc {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .option-btn.active {
+      background: rgba(255, 51, 102, 0.15);
+      border-color: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+
+    .option-btn.active .desc {
+      color: #ff99b3;
+    }
+
+    .full-width {
+      grid-column: span 2;
+    }
+
+    .action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(13, 14, 21, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 16px;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, #ff3366 0%, #ff1a53 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 480px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px var(--accent-glow);
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+
+    .save-btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🔥 Emanuel Dating OS</h1>
+    <p>Wingman Settings & Neural Core</p>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      <span>Firebase Core Active</span>
+    </div>
+  </div>
+
+  <!-- 1. Платформа -->
+  <div class="card">
+    <div class="card-title">📱 Платформа переписки</div>
+    <div class="options-grid" id="group-platform">
+      <div class="option-btn active" data-val="Tinder">🔥 Tinder<span class="desc">Универсальный</span></div>
+      <div class="option-btn" data-val="Pure">😈 Pure<span class="desc">Прямой флирт</span></div>
+      <div class="option-btn" data-val="Bumble">🐝 Bumble<span class="desc">Инициатива девушки</span></div>
+      <div class="option-btn" data-val="Telegram">✈️ Telegram<span class="desc">Личный контакт</span></div>
+    </div>
+  </div>
+
+  <!-- 2. Цель -->
+  <div class="card">
+    <div class="card-title">🎯 Главная цель диалога</div>
+    <div class="options-grid" id="group-goal">
+      <div class="option-btn active full-width" data-val="hookup">
+        ⚡ Быстрый секс / Hookup
+        <span class="desc">1-2 встречи, максимальная страсть и минимум воды</span>
+      </div>
+      <div class="option-btn full-width" data-val="fwb">
+        🥂 Свободные отношения / FWB
+        <span class="desc">Регулярные встречи без обязательств и драмы</span>
+      </div>
+      <div class="option-btn full-width" data-val="relationship">
+        💍 Отношения / Romance
+        <span class="desc">Поиск постоянной девушки, глубокий коннект</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Тональность -->
+  <div class="card">
+    <div class="card-title">⚡ Тональность реплик</div>
+    <div class="options-grid" id="group-tone">
+      <div class="option-btn" data-val="gentle">🌸 Тактичный<span class="desc">Мягкий и вежливый</span></div>
+      <div class="option-btn active" data-val="confident">😎 Уверенный<span class="desc">Остроумный баланс</span></div>
+      <div class="option-btn" data-val="bold">🔥 Дерзкий<span class="desc">Секс-напряжение</span></div>
+      <div class="option-btn" data-val="alpha">👑 Альфа<span class="desc">Сильная позиция</span></div>
+    </div>
+  </div>
+
+  <!-- 4. Скорость эскалации к табу -->
+  <div class="card">
+    <div class="card-title">🚀 Скорость перехода к табу/сексу</div>
+    <div class="options-grid" id="group-escalation">
+      <div class="option-btn" data-val="turbo">⚡ Турбо<span class="desc">3-5 сообщений</span></div>
+      <div class="option-btn active" data-val="optimal">⚖️ Оптимум<span class="desc">6-10 сообщений</span></div>
+      <div class="option-btn full-width" data-val="smooth">🌊 Плавная<span class="desc">12-18 сообщений, глубокий прогрев</span></div>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <button class="save-btn" id="save-btn">Применить настройки</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.expand();
+      tg.enableClosingConfirmation();
+    }
+
+    const state = {
+      platform: 'Tinder',
+      goal: 'hookup',
+      tone: 'confident',
+      escalation: 'optimal'
+    };
+
+    function setupGroup(groupId, stateKey) {
+      const container = document.getElementById(groupId);
+      if (!container) return;
+      const buttons = container.querySelectorAll('.option-btn');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          buttons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state[stateKey] = btn.getAttribute('data-val');
+          if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        });
+      });
+    }
+
+    setupGroup('group-platform', 'platform');
+    setupGroup('group-goal', 'goal');
+    setupGroup('group-tone', 'tone');
+    setupGroup('group-escalation', 'escalation');
+
+    document.getElementById('save-btn').addEventListener('click', () => {
+      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+
+      if (tg?.sendData) {
+        tg.sendData(JSON.stringify({
+          action: 'save_settings',
+          settings: state
+        }));
+        tg.close();
+      } else {
+        alert('Настройки Emanuel OS сохранены:\n' + JSON.stringify(state, null, 2));
+      }
+    });
+  </script>
+</body>
+</html>

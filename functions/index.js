@@ -884,6 +884,83 @@ ${transcript}`;
             return res.json({ success: true });
         }
 
+        // ==============================================================================
+        // 🔥 EMANUEL DATING OS (WINGMAN) ACTIONS
+        // ==============================================================================
+        if (data.action === 'emanuel_getSlots') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const slots = await Database.getSlots(db, userId);
+            const activeSlot = await Database.getActiveSlot(db, userId);
+            const settings = await Database.getUserSettings(db, userId);
+            return res.json({ success: true, slots, activeSlot, settings });
+        }
+
+        if (data.action === 'emanuel_switchSlot') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const slot = await Database.switchSlot(db, userId, data.slotId);
+            return res.json({ success: true, slot });
+        }
+
+        if (data.action === 'emanuel_renameSlot') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const slot = await Database.renameActiveSlot(db, userId, data.name, data.platform);
+            return res.json({ success: true, slot });
+        }
+
+        if (data.action === 'emanuel_clearSlot') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            await Database.clearSlotHistory(db, userId, data.slotId);
+            return res.json({ success: true });
+        }
+
+        if (data.action === 'emanuel_getHistory') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const history = await Database.getHistory(db, userId, data.slotId, data.limit || 15);
+            return res.json({ success: true, history });
+        }
+
+        if (data.action === 'emanuel_getSettings') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const settings = await Database.getUserSettings(db, userId);
+            return res.json({ success: true, settings });
+        }
+
+        if (data.action === 'emanuel_saveSettings') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            await Database.setUserSettings(db, userId, data.settings);
+            return res.json({ success: true });
+        }
+
+        if (data.action === 'emanuel_generateAdvice') {
+            const { AI, Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const activeSlot = await Database.getActiveSlot(db, userId);
+            const userSettings = data.settings || (await Database.getUserSettings(db, userId));
+            const history = await Database.getHistory(db, userId, activeSlot.id, 8);
+
+            const result = await AI.generateAdvice({
+                text: data.text || '',
+                imageBase64: data.imageBase64 || null,
+                userSettings: userSettings,
+                dialogHistory: history
+            });
+
+            if (result.success && data.saveToHistory) {
+                await Database.addTurn(db, userId, activeSlot.id, data.text || '[Скриншот]', result.content, result.gist, result.temperature);
+            }
+
+            await Database.logAction(db, userId, data.imageBase64 ? 'CRM_PHOTO' : 'CRM_TEXT', data.text || '[Скриншот]', result.content, result.durationMs);
+
+            return res.json(result);
+        }
+
         return res.status(400).json({ success: false, error: "No valid action found: " + (data.action || "none") });
     } catch (err) {
         console.error("API Error:", err);
@@ -992,6 +1069,23 @@ exports.aresWebhook = onRequest({ cors: true, maxInstances: 10, memory: '512MiB'
         res.status(200).send('OK');
     } catch (e) {
         console.error("Ares Webhook Error:", e);
+        res.status(500).send('Error');
+    }
+});
+
+// ==============================================================================
+// 🔥 EMANUEL DATING ASSISTANT OS (Modular Wingman Engine)
+// ==============================================================================
+const { processEmanuelUpdate } = require("./emanuel");
+
+exports.emanuelWebhook = onRequest({ cors: true, maxInstances: 10, memory: '512MiB' }, async (req, res) => {
+    try {
+        if (req.method === 'POST') {
+            await processEmanuelUpdate(req.body, db);
+        }
+        res.status(200).send('OK');
+    } catch (e) {
+        console.error("Emanuel Webhook Error:", e);
         res.status(500).send('Error');
     }
 });
