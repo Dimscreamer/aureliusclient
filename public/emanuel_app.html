@@ -2,306 +2,796 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>🔥 Emanuel Dating OS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>🔞 Emanuel Dating OS — AI Wingman</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     :root {
-      --bg-color: #0d0e15;
-      --card-bg: #161922;
-      --card-border: #232736;
-      --accent: #ff3366;
-      --accent-hover: #ff1a53;
-      --accent-glow: rgba(255, 51, 102, 0.25);
-      --text-main: #f0f2f5;
-      --text-muted: #8c93a8;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --bg: #090a0f;
+      --card: #12141e;
+      --border: #1e2235;
+      --accent: #f43f5e;
+      --accent-glow: rgba(244, 63, 94, 0.25);
     }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    body {
+      background-color: var(--bg);
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      height: 100vh;
+      overflow: hidden;
       -webkit-tap-highlight-color: transparent;
     }
-
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      font-family: var(--font-family);
-      padding: 16px;
-      padding-bottom: 90px;
-      line-height: 1.5;
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
     }
-
-    .header {
-      text-align: center;
-      padding: 12px 0 20px 0;
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
     }
-
-    .header h1 {
-      font-size: 24px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #ff3366 0%, #ff758c 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+    .bubble-girl {
+      background: #1e2235;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom-left-radius: 4px;
     }
-
-    .header p {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(16, 185, 129, 0.12);
-      color: var(--success);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 8px;
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 8px var(--success);
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .card-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .options-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .option-btn {
-      background: #1c202e;
-      border: 1px solid var(--card-border);
-      border-radius: 12px;
-      padding: 12px 10px;
-      color: var(--text-main);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: center;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-
-    .option-btn .desc {
-      font-size: 11px;
-      font-weight: 400;
-      color: var(--text-muted);
-    }
-
-    .option-btn.active {
-      background: rgba(255, 51, 102, 0.15);
-      border-color: var(--accent);
-      color: #fff;
-      box-shadow: 0 0 12px var(--accent-glow);
-    }
-
-    .option-btn.active .desc {
-      color: #ff99b3;
-    }
-
-    .full-width {
-      grid-column: span 2;
-    }
-
-    .action-bar {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(13, 14, 21, 0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      padding: 16px;
-      border-top: 1px solid var(--card-border);
-      display: flex;
-      justify-content: center;
-      z-index: 100;
-    }
-
-    .save-btn {
-      background: linear-gradient(135deg, #ff3366 0%, #ff1a53 100%);
-      color: #fff;
-      border: none;
-      border-radius: 14px;
-      width: 100%;
-      max-width: 480px;
-      padding: 14px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 15px var(--accent-glow);
-      transition: transform 0.1s, box-shadow 0.2s;
-    }
-
-    .save-btn:active {
-      transform: scale(0.98);
-      box-shadow: 0 2px 8px var(--accent-glow);
+    .bubble-user {
+      background: linear-gradient(135deg, #be123c 0%, #e11d48 100%);
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 4px 15px rgba(225, 29, 72, 0.2);
     }
   </style>
 </head>
-<body>
+<body class="flex flex-col h-screen text-slate-100 select-none">
 
-  <div class="header">
-    <h1>🔥 Emanuel Dating OS</h1>
-    <p>Wingman Settings & Neural Core</p>
-    <div class="status-badge">
-      <div class="status-dot"></div>
-      <span>Firebase Core Active</span>
-    </div>
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-2xl bg-slate-900/95 border border-rose-500/40 text-rose-300 text-xs font-bold shadow-2xl transition-all duration-300 opacity-0 pointer-events-none flex items-center gap-2">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-text">Текст скопирован</span>
   </div>
 
-  <!-- 0. Стратегия / Режим -->
-  <div class="card">
-    <div class="card-title">🔞 Стратегия / Режим</div>
-    <div class="options-grid" id="group-mode">
-      <div class="option-btn active full-width" data-val="SEX">
-        🔞 SEX MODE (Главный)
-        <span class="desc">Минимальное число шагов до табу, ранняя проверка совместимости</span>
-      </div>
-      <div class="option-btn" data-val="NORMAL">
-        💬 NORMAL
-        <span class="desc">Свободная беседа</span>
-      </div>
-      <div class="option-btn" data-val="DATE">
-        🎯 DATE
-        <span class="desc">Закрытие на встречу</span>
+  <!-- TOP APP HEADER -->
+  <header class="h-14 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-3 flex items-center justify-between z-20 flex-shrink-0">
+    <div class="flex items-center gap-2.5">
+      <button onclick="toggleSidebar()" class="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition active:scale-95 flex items-center gap-1.5">
+        <i data-lucide="users" class="w-4 h-4 text-rose-400"></i>
+        <span id="girls-count-badge" class="text-[11px] font-bold">...</span>
+      </button>
+      <div>
+        <div class="flex items-center gap-1.5">
+          <span id="header-girl-name" class="font-black text-sm tracking-tight text-white">Выбор девушки</span>
+          <span id="header-state-pill" class="text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30">BUILD</span>
+        </div>
+        <div id="header-timing-text" class="text-[10px] text-amber-300 font-medium">⚡ Загрузка...</div>
       </div>
     </div>
-  </div>
 
-  <!-- 1. Скорость движения к табу -->
-  <div class="card">
-    <div class="card-title">⚡ Скорость движения к теме</div>
-    <div class="options-grid" id="group-speed">
-      <div class="option-btn active" data-val="fast">⚡ Максимум быстро<span class="desc">Срезать всю воду</span></div>
-      <div class="option-btn" data-val="optimal">⚖️ Оптимально<span class="desc">1-2 шага мостика</span></div>
-      <div class="option-btn full-width" data-val="smooth">🌊 Осторожно<span class="desc">Плавный разогрев интереса</span></div>
+    <!-- TABS SWITCHER -->
+    <div class="flex items-center bg-slate-900 p-0.5 rounded-xl border border-slate-800">
+      <button onclick="switchTab('chat')" id="tab-btn-chat" class="px-3 py-1 rounded-lg text-xs font-bold bg-rose-500 text-white transition flex items-center gap-1">
+        <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">Чат</span>
+      </button>
+      <button onclick="switchTab('dossier')" id="tab-btn-dossier" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition flex items-center gap-1">
+        <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">Досье</span>
+      </button>
+      <button onclick="switchTab('settings')" id="tab-btn-settings" class="px-3 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition flex items-center gap-1">
+        <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">Настройки</span>
+      </button>
     </div>
+  </header>
+
+  <!-- MAIN WRAPPER: SIDEBAR + CONTENT -->
+  <div class="flex flex-1 overflow-hidden relative">
+
+    <!-- SIDEBAR (DRAWER ON MOBILE, LEFT PANEL ON DESKTOP) -->
+    <aside id="sidebar" class="absolute lg:static inset-y-0 left-0 z-30 w-72 bg-slate-950/95 lg:bg-slate-950/60 backdrop-blur-xl border-r border-slate-800/80 flex flex-col transition-transform duration-300 -translate-x-full lg:translate-x-0 flex-shrink-0">
+      <div class="p-3 border-b border-slate-800/80 flex items-center justify-between">
+        <span class="text-xs font-black uppercase tracking-wider text-slate-400">Мои диалоги</span>
+        <div class="flex items-center gap-1">
+          <button onclick="toggleArchive()" id="btn-toggle-archive" class="text-[10px] px-2 py-1 rounded-lg bg-slate-900 text-slate-300 border border-slate-800 hover:text-white transition">
+            📦 Архив
+          </button>
+          <button onclick="promptNewGirl()" class="text-[10px] px-2.5 py-1 rounded-lg bg-rose-500 text-white font-bold hover:bg-rose-600 transition flex items-center gap-1 shadow-sm shadow-rose-500/30">
+            <i data-lucide="plus" class="w-3 h-3"></i> Новая
+          </button>
+        </div>
+      </div>
+
+      <!-- GIRLS LIST -->
+      <div id="girls-list" class="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
+        <!-- Rendered dynamically -->
+      </div>
+    </aside>
+
+    <!-- BACKDROP FOR MOBILE SIDEBAR -->
+    <div id="sidebar-backdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-black/60 z-20 hidden lg:hidden"></div>
+
+    <!-- VIEW 1: CHAT MESSENGER -->
+    <main id="view-chat" class="flex-1 flex flex-col h-full overflow-hidden relative">
+      <!-- MESSAGES FEED -->
+      <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+        <!-- Message bubbles -->
+      </div>
+
+      <!-- WINGMAN ADVICE BAR (OVERLAY ABOVE INPUT) -->
+      <div id="advice-box" class="hidden mx-3 mb-2 rounded-2xl bg-gradient-to-b from-rose-950/90 via-slate-900/95 to-slate-900/95 border border-rose-500/40 p-3.5 shadow-2xl backdrop-blur-md relative z-10 transition-all">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+            <span id="advice-header-label" class="text-[11px] font-black uppercase tracking-wider text-rose-300">🔞 Следующий ход</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span id="advice-timing-badge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">⏳ Пауза 25-40м</span>
+            <button onclick="dismissAdvice()" class="text-slate-500 hover:text-slate-300 p-1">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- RED FLAG BANNER -->
+        <div id="advice-red-flag" class="hidden mb-2 p-2 rounded-xl bg-red-950/70 border border-red-500/40 text-red-200 text-[11px] flex items-center gap-1.5">
+          <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-400 flex-shrink-0"></i>
+          <span id="advice-red-flag-text"></span>
+        </div>
+
+        <!-- CLICK-TO-COPY REPLY TEXT -->
+        <div onclick="copyCurrentReply()" class="p-3 rounded-xl bg-black/40 border border-white/10 hover:border-rose-500/40 transition cursor-pointer text-sm font-medium text-white mb-2 relative group" title="Нажми для копирования">
+          <div id="advice-reply-text" class="select-all"></div>
+          <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition px-1.5 py-0.5 rounded bg-rose-500 text-[9px] font-bold text-white shadow">
+            Скопировать
+          </div>
+        </div>
+
+        <!-- ACTIONS ROW -->
+        <div class="flex items-center justify-between gap-1.5 pt-1 border-t border-white/5">
+          <div class="flex items-center gap-1.5">
+            <button onclick="copyCurrentReply()" class="px-3 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white font-bold text-[11px] uppercase tracking-wider transition flex items-center gap-1 shadow-sm active:scale-95">
+              <i data-lucide="copy" class="w-3 h-3"></i> Копировать
+            </button>
+            <button onclick="appendAdviceToChat()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 font-bold text-[11px] transition flex items-center gap-1 active:scale-95" title="Записать ход в историю диалога">
+              <i data-lucide="check" class="w-3 h-3"></i> В чат
+            </button>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="requestAlternative()" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-[11px] transition" title="Другой вариант">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="requestFastTrack()" class="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-[11px] transition" title="Быстрее к вопросу">
+              <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- EXPANDABLE RATIONALE -->
+        <div class="mt-2 text-[10px] text-slate-400 italic flex items-center gap-1">
+          <span class="text-rose-400 font-bold not-italic">Почему:</span>
+          <span id="advice-reason-text">...</span>
+        </div>
+      </div>
+
+      <!-- BOTTOM INPUT COMPOSER -->
+      <footer class="p-3 border-t border-slate-800/80 bg-slate-950/80 backdrop-blur-md flex items-center gap-2 flex-shrink-0">
+        <input type="file" id="chat-file-input" accept="image/*" class="hidden">
+        <button onclick="document.getElementById('chat-file-input').click()" class="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-rose-400 hover:border-rose-500/30 transition active:scale-95" title="Прикрепить скриншот переписки">
+          <i data-lucide="camera" class="w-4 h-4"></i>
+        </button>
+
+        <div class="flex-1 relative">
+          <input id="input-girl-message" type="text" placeholder="Что ответила девушка?.." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500/50 transition">
+        </div>
+
+        <button onclick="sendGirlMessage()" id="btn-send-message" class="p-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white transition active:scale-95 shadow-md shadow-rose-500/20" title="Получить ход Emanuel">
+          <i data-lucide="send" class="w-4 h-4"></i>
+        </button>
+      </footer>
+    </main>
+
+    <!-- VIEW 2: DOSSIER & PROFILE -->
+    <main id="view-dossier" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar hidden">
+      <div class="max-w-xl mx-auto space-y-4">
+        <!-- PROFILE FROM VISION -->
+        <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+            <div class="flex items-center gap-2">
+              <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
+              <h3 class="text-xs font-black uppercase tracking-wider text-white">Анкета Tinder / Pure</h3>
+            </div>
+            <input type="file" id="dossier-file-input" accept="image/*" class="hidden">
+            <button onclick="document.getElementById('dossier-file-input').click()" class="text-[10px] px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30 font-bold transition flex items-center gap-1">
+              <i data-lucide="camera" class="w-3 h-3"></i> Скрин анкеты
+            </button>
+          </div>
+
+          <div id="dossier-profile-content" class="space-y-2 text-xs">
+            <div class="text-slate-500 italic text-[11px]">Скриншот анкеты пока не загружен. Нажми «Скрин анкеты», чтобы ИИ считал био, скрытый вайб и темы-крючки!</div>
+          </div>
+        </div>
+
+        <!-- SEXUAL COMPATIBILITY DOSSIER -->
+        <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 space-y-3">
+          <div class="flex items-center gap-2 border-b border-slate-800/80 pb-2.5">
+            <i data-lucide="flame" class="w-4 h-4 text-rose-400"></i>
+            <h3 class="text-xs font-black uppercase tracking-wider text-white">Сексуальная совместимость</h3>
+          </div>
+
+          <div id="dossier-compat-content" class="space-y-2.5 text-xs">
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
+              <div class="text-[10px] uppercase font-bold text-rose-400 mb-1">Выявленные табу:</div>
+              <div id="dossier-taboos" class="text-slate-200">Пока не выявлены</div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
+              <div class="text-[10px] uppercase font-bold text-emerald-400 mb-1">Зеленые зоны и триггеры:</div>
+              <div id="dossier-green-flags" class="text-slate-200">Пока не выявлены</div>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80">
+              <div class="text-[10px] uppercase font-bold text-amber-400 mb-1">Формат первого свидания:</div>
+              <div id="dossier-date-style" class="text-slate-200">Вечерний бар / кофе / спонтанно</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- VIEW 3: SETTINGS -->
+    <main id="view-settings" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar hidden">
+      <div class="max-w-xl mx-auto space-y-4">
+        <div class="rounded-2xl bg-slate-900/80 border border-slate-800 p-4 space-y-3">
+          <h3 class="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <i data-lucide="sliders" class="w-4 h-4 text-rose-400"></i> Калибровка Emanuel OS
+          </h3>
+
+          <!-- PACING -->
+          <div class="space-y-1.5 pt-2">
+            <label class="text-[11px] font-bold text-slate-300">Темп движения к табу:</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setSetting('pacing', 'natural')" id="opt-pacing-natural" class="p-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs font-bold text-left">
+                🌱 Естественный
+                <div class="text-[9px] font-normal text-slate-400 mt-0.5">1-2 реплики на разогрев</div>
+              </button>
+              <button onclick="setSetting('pacing', 'turbo')" id="opt-pacing-turbo" class="p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold text-left">
+                ⚡ Турбо
+                <div class="text-[9px] font-normal text-slate-400 mt-0.5">Сразу к вопросу о границах</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- MALE TONE -->
+          <div class="space-y-1.5 pt-2">
+            <label class="text-[11px] font-bold text-slate-300">Тональность мужчины:</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="setSetting('tone', 'calm')" id="opt-tone-calm" class="p-2 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-[11px] font-bold text-center">
+                Спокойный
+              </button>
+              <button onclick="setSetting('tone', 'witty')" id="opt-tone-witty" class="p-2 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-[11px] font-bold text-center">
+                С иронией
+              </button>
+              <button onclick="setSetting('tone', 'direct')" id="opt-tone-direct" class="p-2 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-[11px] font-bold text-center">
+                Прямой
+              </button>
+            </div>
+          </div>
+
+          <!-- ANTI-EMOJI -->
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center justify-between mt-3">
+            <div>
+              <div class="text-xs font-bold text-white">Железный фильтр эмодзи</div>
+              <div class="text-[10px] text-slate-400">Никаких смайликов 😉🔥 в текстах ответов</div>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">АКТИВНО</span>
+          </div>
+
+          <!-- EVENING RADAR -->
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold text-white">Вечерний радар (18:30)</div>
+              <div class="text-[10px] text-slate-400">Авто-пуш Топ-3 диалогов в Telegram перед онлайном</div>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">18:30 KYIV</span>
+          </div>
+
+          <button onclick="saveAppSettings()" class="w-full py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs uppercase tracking-wider transition shadow-md shadow-rose-500/20 active:scale-95 mt-4">
+            💾 Сохранить настройки
+          </button>
+        </div>
+      </div>
+    </main>
   </div>
 
-  <!-- 2. Прямота сексуальных вопросов -->
-  <div class="card">
-    <div class="card-title">🎯 Прямота вопросов о табу</div>
-    <div class="options-grid" id="group-directness">
-      <div class="option-btn active" data-val="direct">🔥 Прямо<span class="desc">Без завуалирования</span></div>
-      <div class="option-btn" data-val="soft">🎩 Мягко<span class="desc">С лёгкой интригой</span></div>
-    </div>
-  </div>
-
-  <!-- 3. Тональность стиля -->
-  <div class="card">
-    <div class="card-title">🧬 Тональность стиля</div>
-    <div class="options-grid" id="group-tone">
-      <div class="option-btn" data-val="gentle">🌸 Тактичный<span class="desc">Мягкий и вежливый</span></div>
-      <div class="option-btn active" data-val="confident">😎 Уверенный<span class="desc">Остроумный баланс</span></div>
-      <div class="option-btn" data-val="bold">🔥 Дерзкий<span class="desc">Секс-напряжение</span></div>
-      <div class="option-btn" data-val="alpha">👑 Альфа<span class="desc">Сильная позиция</span></div>
-    </div>
-  </div>
-
-  <!-- 4. Скорость эскалации к табу -->
-  <div class="card">
-    <div class="card-title">🚀 Скорость перехода к табу/сексу</div>
-    <div class="options-grid" id="group-escalation">
-      <div class="option-btn" data-val="turbo">⚡ Турбо<span class="desc">3-5 сообщений</span></div>
-      <div class="option-btn active" data-val="optimal">⚖️ Оптимум<span class="desc">6-10 сообщений</span></div>
-      <div class="option-btn full-width" data-val="smooth">🌊 Плавная<span class="desc">12-18 сообщений, глубокий прогрев</span></div>
-    </div>
-  </div>
-
-  <div class="action-bar">
-    <button class="save-btn" id="save-btn">Применить настройки</button>
-  </div>
-
+  <!-- APPLICATION LOGIC -->
   <script>
-    const tg = window.Telegram?.WebApp;
-    if (tg) {
-      tg.expand();
-      tg.enableClosingConfirmation();
-    }
+    const API_URL = 'https://api-lzh3pje5pa-uc.a.run.app';
 
-    const state = {
-      mode: 'SEX',
-      speed: 'fast',
-      directness: 'direct',
-      tone: 'confident'
+    const AppState = {
+      userId: '451682370',
+      sessions: [],
+      activeSession: null,
+      history: [],
+      lastAdvice: null,
+      showArchive: false,
+      settings: {
+        pacing: 'natural',
+        tone: 'calm'
+      }
     };
 
-    function setupGroup(groupId, stateKey) {
-      const container = document.getElementById(groupId);
-      if (!container) return;
-      const buttons = container.querySelectorAll('.option-btn');
-      buttons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          buttons.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          state[stateKey] = btn.getAttribute('data-val');
-          if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-        });
-      });
+    // Инициализация Telegram WebApp
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+      const initUser = window.Telegram.WebApp.initDataUnsafe?.user;
+      if (initUser && initUser.id) {
+        AppState.userId = String(initUser.id);
+      }
     }
 
-    setupGroup('group-mode', 'mode');
-    setupGroup('group-speed', 'speed');
-    setupGroup('group-directness', 'directness');
-    setupGroup('group-tone', 'tone');
+    async function apiCall(action, payload = {}) {
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, userId: AppState.userId, ...payload })
+        });
+        return await res.json();
+      } catch (err) {
+        console.error('API Error:', err);
+        showToast('Ошибка сети: ' + err.message);
+        return { success: false, error: err.message };
+      }
+    }
 
-    document.getElementById('save-btn').addEventListener('click', () => {
-      if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    function showToast(text) {
+      const t = document.getElementById('toast');
+      const txt = document.getElementById('toast-text');
+      if (txt) txt.textContent = text;
+      if (t) {
+        t.classList.remove('opacity-0', 'pointer-events-none');
+        setTimeout(() => t.classList.add('opacity-0', 'pointer-events-none'), 2200);
+      }
+      if (window.Telegram?.WebApp?.HapticFeedback) {
+        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+      }
+    }
 
-      if (tg?.sendData) {
-        tg.sendData(JSON.stringify({
-          action: 'save_settings',
-          settings: state
-        }));
-        tg.close();
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      const bd = document.getElementById('sidebar-backdrop');
+      const isHidden = sb.classList.contains('-translate-x-full');
+      if (isHidden) {
+        sb.classList.remove('-translate-x-full');
+        bd.classList.remove('hidden');
       } else {
-        alert('Настройки Emanuel OS сохранены:\n' + JSON.stringify(state, null, 2));
+        sb.classList.add('-translate-x-full');
+        bd.classList.add('hidden');
+      }
+    }
+
+    function switchTab(tabId) {
+      ['chat', 'dossier', 'settings'].forEach(t => {
+        const v = document.getElementById(`view-${t}`);
+        const b = document.getElementById(`tab-btn-${t}`);
+        if (t === tabId) {
+          v?.classList.remove('hidden');
+          b?.classList.add('bg-rose-500', 'text-white');
+          b?.classList.remove('text-slate-400');
+        } else {
+          v?.classList.add('hidden');
+          b?.classList.remove('bg-rose-500', 'text-white');
+          b?.classList.add('text-slate-400');
+        }
+      });
+      if (tabId === 'dossier') renderDossierView();
+    }
+
+    async function loadData() {
+      const res = await apiCall('emanuel_getSessions');
+      if (res && res.success) {
+        AppState.sessions = res.sessions || [];
+        AppState.activeSession = res.activeSession || AppState.sessions[0] || null;
+        renderSidebar();
+        updateHeader();
+        await loadHistory();
+      }
+    }
+
+    async function loadHistory() {
+      if (!AppState.activeSession) return;
+      const res = await apiCall('emanuel_getHistory', { sessionId: AppState.activeSession.id, limit: 20 });
+      AppState.history = res.history || [];
+      renderMessages();
+    }
+
+    function renderSidebar() {
+      const listEl = document.getElementById('girls-list');
+      const countEl = document.getElementById('girls-count-badge');
+      if (!listEl) return;
+
+      const filtered = AppState.sessions.filter(s => AppState.showArchive ? s.status === 'archived' : s.status === 'active');
+      if (countEl) countEl.textContent = `Диалоги (${filtered.length})`;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-8 text-xs text-slate-500">Нет диалогов</div>`;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(s => {
+        const isActive = AppState.activeSession?.id === s.id;
+        let badge = '🟡';
+        if (s.stepsToTaboo === 0 || s.state === 'READY_FOR_TABU') badge = '🔥';
+        else if (s.state === 'DATE_CLOSING') badge = '🎯';
+        else if (s.state === 'INCOMPATIBLE') badge = '❄️';
+
+        return `
+          <div onclick="selectSession('${s.id}')" class="p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${isActive ? 'bg-rose-500/15 border-rose-500/40 text-white' : 'bg-slate-900/60 border-slate-800/80 text-slate-300 hover:bg-slate-900'}">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="text-base">${badge}</span>
+              <div class="truncate">
+                <div class="font-bold text-xs truncate">${escapeHtml(s.name)}</div>
+                <div class="text-[10px] text-slate-400 truncate">${escapeHtml(s.lastMessage || 'Начни диалог...')}</div>
+              </div>
+            </div>
+            <span class="text-[9px] px-1.5 py-0.5 rounded font-extrabold bg-black/40 border border-white/5 flex-shrink-0">
+              ${s.stepsToTaboo === 0 ? '0 ш.' : `~${s.stepsToTaboo || 1} ш.`}
+            </span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateHeader() {
+      const s = AppState.activeSession;
+      const nameEl = document.getElementById('header-girl-name');
+      const pillEl = document.getElementById('header-state-pill');
+      const timingEl = document.getElementById('header-timing-text');
+
+      if (!s) {
+        if (nameEl) nameEl.textContent = 'Нет активной девушки';
+        return;
+      }
+
+      if (nameEl) nameEl.textContent = s.name;
+      if (pillEl) {
+        pillEl.textContent = s.state || 'BUILD';
+        if (s.state === 'DATE_CLOSING') {
+          pillEl.className = 'text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        } else if (s.stepsToTaboo === 0 || s.state === 'READY_FOR_TABU') {
+          pillEl.className = 'text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/30';
+        } else {
+          pillEl.className = 'text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        }
+      }
+      if (timingEl) {
+        timingEl.textContent = s.lastTimingAdvice || '⚡ Отвечай сразу, пока она на связи';
+      }
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('messages-container');
+      if (!container) return;
+
+      if (!AppState.history || AppState.history.length === 0) {
+        container.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500">
+            <i data-lucide="message-circle" class="w-12 h-12 text-slate-700 mb-2"></i>
+            <div class="text-xs font-bold text-slate-400">История диалога с «${AppState.activeSession?.name || 'девушкой'}» пуста</div>
+            <div class="text-[11px] text-slate-600 mt-1 max-w-xs">Отправь её сообщение внизу или прикрепи скриншот переписки, чтобы Emanuel рассчитал следующий ход.</div>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = AppState.history.map(t => {
+        let girlHtml = '';
+        if (t.girl) {
+          girlHtml = `
+            <div class="flex justify-start">
+              <div class="bubble-girl p-3 rounded-2xl max-w-[85%] sm:max-w-[70%] text-xs text-slate-200">
+                <div class="text-[9px] font-bold text-rose-400/80 mb-0.5">${escapeHtml(AppState.activeSession?.name || 'Она')}</div>
+                <div class="leading-relaxed font-sans">${escapeHtml(t.girl)}</div>
+              </div>
+            </div>
+          `;
+        }
+
+        let wingmanHtml = '';
+        if (t.wingman) {
+          wingmanHtml = `
+            <div class="flex justify-end">
+              <div class="bubble-user p-3 rounded-2xl max-w-[85%] sm:max-w-[70%] text-xs text-white">
+                <div class="text-[9px] font-bold text-white/70 mb-0.5 flex items-center justify-between gap-2">
+                  <span>Ты</span>
+                  <span class="opacity-75">1-тап копия</span>
+                </div>
+                <div onclick="copyText('${escapeJsString(t.wingman)}')" class="leading-relaxed font-sans cursor-pointer active:opacity-80" title="Нажми, чтобы скопировать">
+                  ${escapeHtml(t.wingman)}
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        return girlHtml + wingmanHtml;
+      }).join('');
+
+      container.scrollTop = container.scrollHeight;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    async function selectSession(sessionId) {
+      const res = await apiCall('emanuel_switchSession', { sessionId });
+      if (res && res.success) {
+        AppState.activeSession = res.activeSession;
+        renderSidebar();
+        updateHeader();
+        await loadHistory();
+        dismissAdvice();
+        // Закрываем мобильный сайдбар
+        const sb = document.getElementById('sidebar');
+        const bd = document.getElementById('sidebar-backdrop');
+        sb.classList.add('-translate-x-full');
+        bd.classList.add('hidden');
+      }
+    }
+
+    async function promptNewGirl() {
+      const name = prompt('Как зовут девушку?');
+      if (!name || !name.trim()) return;
+      const res = await apiCall('emanuel_createSession', { name: name.trim() });
+      if (res && res.success) {
+        showToast(`Диалог с «${name.trim()}» создан!`);
+        await loadData();
+      }
+    }
+
+    function toggleArchive() {
+      AppState.showArchive = !AppState.showArchive;
+      const btn = document.getElementById('btn-toggle-archive');
+      if (btn) btn.textContent = AppState.showArchive ? 'Активные' : '📦 Архив';
+      renderSidebar();
+    }
+
+    async function sendGirlMessage() {
+      const input = document.getElementById('input-girl-message');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+
+      input.value = '';
+      showToast('Emanuel рассчитывает ход...');
+
+      const res = await apiCall('emanuel_generateAdvice', {
+        text: text,
+        sessionId: AppState.activeSession?.id,
+        saveToHistory: true
+      });
+
+      if (res && res.success) {
+        AppState.lastAdvice = res;
+        renderAdviceBox(res);
+        await loadHistory();
+      }
+    }
+
+    function renderAdviceBox(res) {
+      const box = document.getElementById('advice-box');
+      const headerLabel = document.getElementById('advice-header-label');
+      const timingBadge = document.getElementById('advice-timing-badge');
+      const replyText = document.getElementById('advice-reply-text');
+      const reasonText = document.getElementById('advice-reason-text');
+      const redFlagWrap = document.getElementById('advice-red-flag');
+      const redFlagText = document.getElementById('advice-red-flag-text');
+
+      if (!box || !replyText) return;
+
+      if (res.nextAction === 'CLOSE_DATE' || res.state === 'DATE_CLOSING') {
+        headerLabel.textContent = '🎯 Назначение встречи';
+      } else if (res.nextAction === 'ASK_TABU' || res.state === 'READY_FOR_TABU') {
+        headerLabel.textContent = '🔥 Вопрос о сексуальных табу';
+      } else {
+        headerLabel.textContent = '🔞 Следующий ход';
+      }
+
+      if (timingBadge) timingBadge.textContent = res.timingAdvice || '⚡ Отвечай сразу';
+      if (replyText) replyText.textContent = res.reply;
+      if (reasonText) reasonText.textContent = res.reason || 'Оптимальный шаг';
+
+      if (res.redFlags && redFlagWrap && redFlagText) {
+        redFlagWrap.classList.remove('hidden');
+        redFlagText.textContent = res.redFlags;
+      } else if (redFlagWrap) {
+        redFlagWrap.classList.add('hidden');
+      }
+
+      box.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function dismissAdvice() {
+      const box = document.getElementById('advice-box');
+      if (box) box.classList.add('hidden');
+    }
+
+    function copyCurrentReply() {
+      if (!AppState.lastAdvice?.reply) return;
+      copyText(AppState.lastAdvice.reply);
+    }
+
+    async function appendAdviceToChat() {
+      if (!AppState.lastAdvice?.reply) return;
+      await apiCall('emanuel_addManualTurn', {
+        sessionId: AppState.activeSession?.id,
+        girl: '',
+        wingman: AppState.lastAdvice.reply,
+        state: AppState.lastAdvice.state,
+        reason: AppState.lastAdvice.reason
+      });
+      showToast('Ход записан в историю переписки!');
+      dismissAdvice();
+      await loadHistory();
+    }
+
+    async function requestAlternative() {
+      showToast('Ищу альтернативный ход...');
+      const res = await apiCall('emanuel_generateAdvice', {
+        sessionId: AppState.activeSession?.id,
+        isAlternative: true
+      });
+      if (res && res.success) {
+        AppState.lastAdvice = res;
+        renderAdviceBox(res);
+      }
+    }
+
+    async function requestFastTrack() {
+      showToast('Ускоряю движение к табу...');
+      const res = await apiCall('emanuel_generateAdvice', {
+        sessionId: AppState.activeSession?.id,
+        fastTrack: true
+      });
+      if (res && res.success) {
+        AppState.lastAdvice = res;
+        renderAdviceBox(res);
+      }
+    }
+
+    function renderDossierView() {
+      const p = AppState.activeSession?.profile;
+      const d = AppState.activeSession?.dossier;
+
+      const profEl = document.getElementById('dossier-profile-content');
+      if (profEl) {
+        if (p) {
+          profEl.innerHTML = `
+            <div class="space-y-1.5">
+              ${p.statedGoal ? `<div><b class="text-purple-300">Цель в анкете:</b> «${escapeHtml(p.statedGoal)}»</div>` : ''}
+              ${p.psychotype ? `<div class="italic text-slate-300"><b class="text-purple-300">Скрытый вайб:</b> ${escapeHtml(p.psychotype)}</div>` : ''}
+              ${p.bioText ? `<div class="text-[11px] text-slate-400"><b class="text-slate-300">Био:</b> ${escapeHtml(p.bioText)}</div>` : ''}
+              ${Array.isArray(p.interests) && p.interests.length ? `<div class="text-[11px] text-purple-300">✨ ${p.interests.map(escapeHtml).join(', ')}</div>` : ''}
+            </div>
+          `;
+        } else {
+          profEl.innerHTML = `<div class="text-slate-500 italic text-[11px]">Скриншот анкеты пока не загружен.</div>`;
+        }
+      }
+
+      const taboosEl = document.getElementById('dossier-taboos');
+      const greenEl = document.getElementById('dossier-green-flags');
+      const dateEl = document.getElementById('dossier-date-style');
+
+      if (taboosEl) taboosEl.textContent = d?.taboos?.length ? d.taboos.join(', ') : 'Пока не выявлены';
+      if (greenEl) greenEl.textContent = d?.greenFlags?.length ? d.greenFlags.join(', ') : 'Пока не выявлены';
+      if (dateEl) dateEl.textContent = d?.dateStyle || 'Вечерний бар / вино у него / спонтанно';
+    }
+
+    function setSetting(key, val) {
+      AppState.settings[key] = val;
+      if (key === 'pacing') {
+        const nat = document.getElementById('opt-pacing-natural');
+        const tur = document.getElementById('opt-pacing-turbo');
+        if (val === 'natural') {
+          nat.className = 'p-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs font-bold text-left';
+          tur.className = 'p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold text-left';
+        } else {
+          tur.className = 'p-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-xs font-bold text-left';
+          nat.className = 'p-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold text-left';
+        }
+      } else if (key === 'tone') {
+        ['calm', 'witty', 'direct'].forEach(t => {
+          const btn = document.getElementById(`opt-tone-${t}`);
+          if (t === val) {
+            btn.className = 'p-2 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 text-[11px] font-bold text-center';
+          } else {
+            btn.className = 'p-2 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-[11px] font-bold text-center';
+          }
+        });
+      }
+    }
+
+    async function saveAppSettings() {
+      await apiCall('emanuel_saveSettings', { settings: AppState.settings });
+      showToast('Настройки сохранены! ✨');
+    }
+
+    function copyText(str) {
+      if (!str) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(str).then(() => showToast('Текст скопирован!'));
+      } else {
+        const el = document.createElement('textarea');
+        el.value = str;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        showToast('Текст скопирован!');
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function escapeJsString(str) {
+      if (!str) return '';
+      return String(str).replace(/'/g, "\\'").replace(/\n/g, ' ');
+    }
+
+    // Обработчик загрузки файла переписки
+    document.getElementById('chat-file-input')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        showToast('Анализирую скриншот переписки...');
+        const res = await apiCall('emanuel_generateAdvice', {
+          sessionId: AppState.activeSession?.id,
+          imageBase64: ev.target.result,
+          saveToHistory: true
+        });
+        if (res && res.success) {
+          AppState.lastAdvice = res;
+          renderAdviceBox(res);
+          await loadHistory();
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Обработчик загрузки файла анкеты
+    document.getElementById('dossier-file-input')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        showToast('Анализирую анкету девушки...');
+        const res = await apiCall('emanuel_analyzeProfile', {
+          sessionId: AppState.activeSession?.id,
+          imageBase64: ev.target.result,
+          girlName: AppState.activeSession?.name
+        });
+        if (res && res.success && res.profile) {
+          if (!AppState.activeSession.profile) AppState.activeSession.profile = {};
+          Object.assign(AppState.activeSession.profile, res.profile);
+          renderDossierView();
+          showToast('Анкета добавлена в досье! ✨');
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Клавиша Enter в поле ввода
+    document.getElementById('input-girl-message')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendGirlMessage();
       }
     });
+
+    // Старт приложения
+    loadData();
   </script>
 </body>
 </html>

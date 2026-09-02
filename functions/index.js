@@ -956,8 +956,20 @@ ${transcript}`;
             const { Database } = require('./emanuel');
             const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
             const sessionId = data.sessionId || data.slotId;
-            const history = await Database.getHistory(db, userId, sessionId, data.limit || 15);
+            const history = await Database.getHistory(db, userId, sessionId, data.limit || 20);
             return res.json({ success: true, history });
+        }
+
+        if (data.action === 'emanuel_addManualTurn') {
+            const { Database } = require('./emanuel');
+            const userId = data.userId || CONFIG.ADMIN_CHAT_ID;
+            const activeSession = await Database.getActiveSession(db, userId);
+            const sessionId = data.sessionId || activeSession.id;
+            await Database.addTurn(db, userId, sessionId, data.girl || '', data.wingman || '', {
+                state: data.state || activeSession.state || 'BUILD',
+                reason: data.reason || 'Ввод из интерфейса мессенджера'
+            });
+            return res.json({ success: true });
         }
 
         if (data.action === 'emanuel_leadMe') {

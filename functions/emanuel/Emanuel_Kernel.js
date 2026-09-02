@@ -53,6 +53,9 @@ function getAdviceInlineKeyboard(session, replyText) {
             [
                 { text: '🔄 Другой вариант', callback_data: `act_alt_${sId}` },
                 { text: '⚡ Быстрее', callback_data: `act_fast_${sId}` }
+            ],
+            [
+                { text: '💬 История диалога', callback_data: `session_history_${sId}` }
             ]
         ]
     };
@@ -108,10 +111,11 @@ async function sendDialogsMenu(chatId, userId, db, showArchived = false) {
 }
 
 /**
- * Карточка конкретной девушки (с данными профиля и досье)
+ * Карточка конкретной девушки (с данными профиля, досье и последними сообщениями)
  */
 async function sendSessionCard(chatId, userId, sessionId, db) {
     const session = await Database.switchSession(db, userId, sessionId);
+    const recentHistory = await Database.getHistory(db, userId, sessionId, 4);
 
     let statusText = `~${session.stepsToTaboo || 1} шага до проверки совместимости`;
     if (session.stepsToTaboo === 0 || session.state === 'READY_FOR_TABU') {
@@ -139,29 +143,73 @@ async function sendSessionCard(chatId, userId, sessionId, db) {
             `• Зеленые зоны: <i>${greenFlags}</i>\n`;
     }
 
+    let historyBlock = '';
+    if (recentHistory && recentHistory.length > 0) {
+        historyBlock = '\n💬 <b>Последние сообщения:</b>\n';
+        recentHistory.forEach(t => {
+            if (t.girl) historyBlock += `• Она: <i>«${Telegram.escapeHtml(t.girl.substring(0, 50))}»</i>\n`;
+            if (t.wingman) historyBlock += `• Ты: <code>${Telegram.escapeHtml(t.wingman.substring(0, 50))}</code>\n`;
+        });
+    }
+
     const cardMsg = 
         `👩 <b>[${session.name}]</b>\n\n` +
         `• Состояние: <b>${session.state || 'BUILD'}</b>\n` +
         `• Дистанция: ${statusText}\n` +
-        `• Реплик в истории: <b>${session.turnsCount || 0}</b>\n` +
+        `• Всего реплик: <b>${session.turnsCount || 0}</b>\n` +
         profileBlock +
         dossierBlock +
+        historyBlock +
         `\n<i>Диалог выбран активным. Все входящие сообщения и скриншоты идут сюда.</i>`;
 
     const actions = {
         inline_keyboard: [
             [
                 { text: '⚡ Быстрее к вопросу', callback_data: `act_fast_${session.id}` },
-                { text: '📸 Добавить анкету', callback_data: `session_profile_${session.id}` }
+                { text: '💬 История (10)', callback_data: `session_history_${session.id}` }
             ],
             [
-                { text: '⚙️ Управление', callback_data: `session_manage_${session.id}` },
+                { text: '📸 Добавить анкету', callback_data: `session_profile_${session.id}` },
+                { text: '⚙️ Управление', callback_data: `session_manage_${session.id}` }
+            ],
+            [
                 { text: '↩️ Все диалоги', callback_data: 'nav_show_active' }
             ]
         ]
     };
 
     await Telegram.sendMessage(chatId, cardMsg, { replyMarkup: actions });
+}
+
+/**
+ * Просмотр истории переписки диалога (последние 10 сообщений)
+ */
+async function sendHistoryView(chatId, userId, sessionId, db) {
+    const sessions = await Database.getSessions(db, userId, null);
+    const session = sessions.find(s => s.id === sessionId) || (await Database.getActiveSession(db, userId));
+    const history = await Database.getHistory(db, userId, sessionId, 10);
+
+    if (!history || history.length === 0) {
+        await Telegram.sendMessage(chatId, `💬 В диалоге с <b>«${session.name}»</b> пока нет сохранённых сообщений.`);
+        return;
+    }
+
+    let msg = `💬 <b>История переписки с «${session.name}» (последние ${history.length}):</b>\n\n`;
+    history.forEach((turn, idx) => {
+        msg += `<b>${idx + 1}.</b> 👩 <i>«${Telegram.escapeHtml(turn.girl)}»</i>\n`;
+        msg += `   └ 🔞 <b>Ответ:</b> <code>${Telegram.escapeHtml(turn.wingman)}</code>\n\n`;
+    });
+
+    const kb = {
+        inline_keyboard: [
+            [
+                { text: '⚡ Быстрее к вопросу', callback_data: `act_fast_${sessionId}` },
+                { text: '↩️ Назад в карточку', callback_data: `session_card_${sessionId}` }
+            ]
+        ]
+    };
+
+    await Telegram.sendMessage(chatId, msg, { replyMarkup: kb });
 }
 
 /**
@@ -292,6 +340,13 @@ async function handleCallbackQuery(cb, db) {
     if (data.startsWith('session_card_')) {
         const sId = data.replace('session_card_', '');
         await sendSessionCard(chatId, userId, sId, db);
+        return;
+    }
+
+    // Просмотр истории переписки (10 сообщений)
+    if (data.startsWith('session_history_')) {
+        const sId = data.replace('session_history_', '');
+        await sendHistoryView(chatId, userId, sId, db);
         return;
     }
 
@@ -507,7 +562,7 @@ async function processBatchPhotos(chatId, userId, sessionId, fileIds, caption, d
     try {
         await Telegram.sendChatAction(chatId, 'typing');
         const active = await Database.getActiveSession(db, userId);
-        const history = await Database.getHistory(db, userId, sessionId, 8);
+        const history = await Database.getHistory(db, userId, sessionId, 12);
 
         // Загружаем все скриншоты в base64 параллельно
         const imagesBase64 = await Promise.all(
@@ -621,7 +676,7 @@ async function handleAlternativeMove(chatId, userId, sessionId, db) {
 async function processTextInput(chatId, userId, sessionId, text, fastTrack = false, isAlternative = false, db) {
     try {
         const active = await Database.getActiveSession(db, userId);
-        const history = await Database.getHistory(db, userId, sessionId, 8);
+        const history = await Database.getHistory(db, userId, sessionId, 12);
 
         const result = await AI.generateAdvice({
             text: text,
