@@ -61,12 +61,27 @@ function formatTelegramHtml(rawText) {
     // 4. Заменяем амперсанды, не являющиеся HTML-сущностями
     text = text.replace(/&(?!amp;|lt;|gt;|quot;|#\d+;)/g, '&amp;');
 
-    // 5. Экранируем сырые < и >, если они не образуют разрешенные теги
+    // 5. Экранируем сырые < и >, поддерживая telegram-теги (включая <blockquote expandable> и <tg-spoiler>)
     const ALLOWED_TAGS = ['b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'code', 'pre', 'tg-spoiler', 'blockquote', 'a'];
-    text = text.replace(/<(\/?[a-zA-Z0-9-]+)(\s+href="[^"]*")?\s*\/?>/g, (match, tag) => {
+    text = text.replace(/<(\/?[a-zA-Z0-9-]+)(\s+[^>]*)?>/g, (match, tag, attrs) => {
         const cleanTag = tag.replace('/', '').toLowerCase();
         if (ALLOWED_TAGS.includes(cleanTag)) {
-            return match;
+            if (cleanTag === 'blockquote') {
+                if (attrs && /\bexpandable\b/i.test(attrs)) {
+                    return `<blockquote expandable>`;
+                }
+                return tag.startsWith('/') ? `</blockquote>` : `<blockquote>`;
+            }
+            if (cleanTag === 'a') {
+                const hrefMatch = attrs ? attrs.match(/\bhref="([^"]*)"/i) : null;
+                if (hrefMatch) {
+                    return `<a href="${hrefMatch[1]}">`;
+                }
+            }
+            if (tag.startsWith('/')) {
+                return `</${cleanTag}>`;
+            }
+            return `<${cleanTag}>`;
         }
         return match.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     });
@@ -78,9 +93,8 @@ function formatTelegramHtml(rawText) {
     text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
     text = text.replace(/__([^_]+)__/g, '<b>$1</b>');
 
-    // 7. Стилизация списков по стандарту Ares Nutrition (синие буллеты 🔹)
-    text = text.replace(/^[ \t]*[•\*\-\+][ \t]+/gm, '🔹 ');
-    text = text.replace(/^[ \t]*(\d+)[\.\)][ \t]+/gm, '🔹 ');
+    // 7. Стилизация списков по стандарту Ares Nutrition (синие буллеты 🔹 или •)
+    text = text.replace(/^[ \t]*[\*\-\+][ \t]+/gm, '• ');
 
     text = text.replace(/(^|\s)_([^_]+)_(\s|$|[.,!?:;])/g, '$1<i>$2</i>$3');
     text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
@@ -89,7 +103,7 @@ function formatTelegramHtml(rawText) {
     text = text.replace(/<br\s*\/?>/gi, '\n');
     text = text.replace(/<\/?(p|div|ul|ol|li|span|h[1-6])[^>]*>/gi, '\n');
 
-    // 9. Авто-оборачивание чисел, дат, процентов, валют и KPI в <code>...</code> (стиль синих цифр Ареса)
+    // 9. Авто-оборачивание чисел, дат, процентов, валют и KPI в <code>...</code> (стиль синих цифр)
     function wrapAsCode(content) {
         const idx = inlineCodes.length;
         inlineCodes.push('<code>' + content.trim() + '</code>');
@@ -110,8 +124,8 @@ function formatTelegramHtml(rawText) {
             return match;
         });
 
-        // Б. Числовые значения параметров после двоеточия (🔹 Клики: 150)
-        processed = processed.replace(/^(🔹\s*[^:\n]{1,40}:\s*)([\d+-][^<>\n]*)$/g, (match, prefix, val) => {
+        // Б. Числовые значения параметров после двоеточия (• Клики: 150 или 🔹 Клики: 150)
+        processed = processed.replace(/^([•🔹\-]\s*[^:\n]{1,40}:\s*)([\d+-][^<>\n]*)$/g, (match, prefix, val) => {
             const cleanVal = val.trim();
             if (cleanVal.includes('XYZINLINECODE')) return match;
             return prefix + wrapAsCode(cleanVal);
@@ -124,15 +138,15 @@ function formatTelegramHtml(rawText) {
             return match;
         });
 
-        // Г. Валюты и суммы: 540.50 EUR, 1500 грн, $50, €100 (вне тегов и плейсхолдеров)
-        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|(\b\d+(?:[.,]\d+)?\s*(?:EUR|USD|UAH|грн|\$|€)\b)/gi, (match, tag, cur) => {
+        // Г. Валюты и суммы: $148.50, 540.50 EUR, 1500 грн, €100 (вне тегов и плейсхолдеров)
+        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|((?:[\$€₴])\s*\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s*(?:EUR|USD|UAH|грн|\$|€)\b)/gi, (match, tag, cur) => {
             if (tag) return tag;
             if (cur) return wrapAsCode(cur);
             return match;
         });
 
-        // Д. Отдельные изолированные числа (за 14 дней, до 200 EUR)
-        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|(\b(?<![a-zA-Z0-9_])\d+(?:[.,]\d+)?\b(?!\s*[:\/\-_a-zA-Z]))/g, (match, tag, num) => {
+        // Д. Отдельные изолированные числа (за 14 дней, до 200), исключая нумерацию списков (1., 2.)
+        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|(\b(?<![a-zA-Z0-9_#])\d+(?:[.,]\d+)?\b(?!\s*[:\/\-_a-zA-Z\.\)]))/g, (match, tag, num) => {
             if (tag) return tag;
             if (num) return wrapAsCode(num);
             return match;
@@ -181,9 +195,9 @@ function formatTelegramHtml(rawText) {
         text += '</' + unclosed + '>';
     }
 
-    // 12. Форматирование абзацев:
-    // Разделяем заголовки и текст аккуратным переносом
-    text = text.replace(/(<\/b>)\n([^\n🔹])/g, '$1\n\n$2');
+    // 12. Форматирование абзацев (воздух \n\n):
+    text = text.replace(/(<\/b>)\n([^\n•🔹<])/g, '$1\n\n$2');
+    text = text.replace(/(<\/blockquote>)\n([^\n<])/g, '$1\n\n$2');
     // Сжимаем 3+ переноса строк до аккуратных 2 (абзацы)
     text = text.replace(/\n{3,}/g, '\n\n').trim();
 
@@ -218,6 +232,7 @@ async function sendTelegramMessage(chatId, text, replyToMsgId = null, replyMarku
             chat_id: String(chatId),
             text: parts[i],
             parse_mode: 'HTML',
+            link_preview_options: { is_disabled: true },
             disable_web_page_preview: true
         };
         // Reply только к первому сообщению, остальные идут следом
@@ -255,6 +270,7 @@ async function editTelegramMessage(chatId, messageId, text, replyMarkup = null) 
         message_id: messageId,
         text: formattedText,
         parse_mode: 'HTML',
+        link_preview_options: { is_disabled: true },
         disable_web_page_preview: true
     };
     if (replyMarkup) {
