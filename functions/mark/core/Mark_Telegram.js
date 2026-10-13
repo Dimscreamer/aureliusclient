@@ -125,7 +125,8 @@ function formatTelegramHtml(rawText) {
     text = text.replace(/(XYZINLINECODE\d+XYZ)[ \t]*\n+[ \t]*(?=\/|из\s|\()/g, '$1 ');
     text = text.replace(/([:：])[ \t]*\n+[ \t]*(XYZINLINECODE\d+XYZ)/g, '$1 $2');
 
-    // 9. Авто-оборачивание чисел, дат, процентов, валют и KPI в <code>...</code> (стиль синих цифр)
+    // 9. Авто-оборачивание чисел, дат, процентов, валют и KPI в <code>...</code> (стандарт Ares)
+    // Если ИИ уже разметил значения в <code>, они сохранены в XYZINLINECODE и не трогаются.
     function wrapAsCode(content) {
         const idx = inlineCodes.length;
         inlineCodes.push('<code>' + content.trim() + '</code>');
@@ -146,8 +147,9 @@ function formatTelegramHtml(rawText) {
             return match;
         });
 
-        // Б. Числовые значения параметров после двоеточия (• Клики: 150 или 🔹 Клики: 150)
-        processed = processed.replace(/^([•🔹\-]\s*[^:\n]{1,40}:\s*)([\d+-][^<>\n]*)$/g, (match, prefix, val) => {
+        // Б. Числовые значения одиночных метрик после двоеточия (• Клики: 150 или 🔹 Расход: $84.20)
+        // Строго число или валюта/процент, без длинных предложений!
+        processed = processed.replace(/^([•🔹\-]\s*[^:\n]{1,30}:\s*)((?:[\$€₴+-])?\s*\d+(?:[.,]\d+)?(?:\s*(?:%|EUR|USD|UAH|грн|\$|€|ккал|г|лидов|лида|конверсий|заявок))?)$/g, (match, prefix, val) => {
             const cleanVal = val.trim();
             if (cleanVal.includes('XYZINLINECODE')) return match;
             return prefix + wrapAsCode(cleanVal);
@@ -178,15 +180,12 @@ function formatTelegramHtml(rawText) {
     });
     text = formattedLines.join('\n');
 
-    // 10. Восстанавливаем сохраненные ссылки и код
+    // 10. Восстанавливаем сохраненные ссылки и код (строго чистый Ares-стиль <code>)
     links.forEach((link, idx) => {
         text = text.replace('XYZLINK' + idx + 'XYZ', link);
     });
     inlineCodes.forEach((code, idx) => {
-        // <b><code>…</code></b>: на мобилках жирный моноширинный текст, на десктопе — синяя плашка.
-        // Если код уже внутри <b>…</b>, повторно не оборачиваем.
-        const re = new RegExp('(<b>)?XYZINLINECODE' + idx + 'XYZ');
-        text = text.replace(re, (m, openB) => openB ? '<b>' + code : '<b>' + code + '</b>');
+        text = text.replace('XYZINLINECODE' + idx + 'XYZ', code);
     });
     codeBlocks.forEach((code, idx) => {
         text = text.replace('XYZCODEBLOCK' + idx + 'XYZ', code);
