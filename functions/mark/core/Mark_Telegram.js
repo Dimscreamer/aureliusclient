@@ -23,7 +23,7 @@ function formatTelegramHtml(rawText) {
         return 'XYZCODEBLOCK' + idx + 'XYZ';
     });
 
-    // 2. Сохраняем инлайн-код
+    // 2. Сохраняем уже существующий инлайн-код
     const inlineCodes = [];
     text = text.replace(/`([^`\n]+)`/g, (match, code) => {
         const idx = inlineCodes.length;
@@ -34,13 +34,35 @@ function formatTelegramHtml(rawText) {
         inlineCodes.push('<code>' + escapedCode + '</code>');
         return 'XYZINLINECODE' + idx + 'XYZ';
     });
+    text = text.replace(/<code>([\s\S]*?)<\/code>/gi, (match, code) => {
+        const idx = inlineCodes.length;
+        inlineCodes.push('<code>' + code + '</code>');
+        return 'XYZINLINECODE' + idx + 'XYZ';
+    });
 
-    // 3. Заменяем амперсанды, не являющиеся HTML-сущностями
+    // 3. Сохраняем ссылки (a href и raw URLs), чтобы не ломать цифры внутри адресов
+    const links = [];
+    text = text.replace(/<a\s+href="([^"]+)">([\s\S]*?)<\/a>/gi, (match) => {
+        const idx = links.length;
+        links.push(match);
+        return 'XYZLINK' + idx + 'XYZ';
+    });
+    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, label, url) => {
+        const idx = links.length;
+        links.push(`<a href="${url}">${label}</a>`);
+        return 'XYZLINK' + idx + 'XYZ';
+    });
+    text = text.replace(/(https?:\/\/[^\s<]+)/g, (match, url) => {
+        const idx = links.length;
+        links.push(`<a href="${url}">${url}</a>`);
+        return 'XYZLINK' + idx + 'XYZ';
+    });
+
+    // 4. Заменяем амперсанды, не являющиеся HTML-сущностями
     text = text.replace(/&(?!amp;|lt;|gt;|quot;|#\d+;)/g, '&amp;');
 
-    // 4. Экранируем сырые < и >, если они не образуют разрешенные теги
+    // 5. Экранируем сырые < и >, если они не образуют разрешенные теги
     const ALLOWED_TAGS = ['b', 'strong', 'i', 'em', 'u', 'ins', 's', 'strike', 'del', 'code', 'pre', 'tg-spoiler', 'blockquote', 'a'];
-    
     text = text.replace(/<(\/?[a-zA-Z0-9-]+)(\s+href="[^"]*")?\s*\/?>/g, (match, tag) => {
         const cleanTag = tag.replace('/', '').toLowerCase();
         if (ALLOWED_TAGS.includes(cleanTag)) {
@@ -48,24 +70,82 @@ function formatTelegramHtml(rawText) {
         }
         return match.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     });
-
     text = text.replace(/<(?![a-zA-Z0-9_\/])/g, '&lt;');
     text = text.replace(/(?<![a-zA-Z0-9_"']|\/|-)>/g, '&gt;');
 
-    // 5. Преобразуем Markdown в HTML
+    // 6. Преобразуем Markdown в HTML
     text = text.replace(/^#{1,6}\s*(.+)$/gm, '<b>$1</b>');
     text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
     text = text.replace(/__([^_]+)__/g, '<b>$1</b>');
-    text = text.replace(/^[ \t]*[\*\-\+][ \t]+/gm, '• ');
+
+    // 7. Стилизация списков по стандарту Ares Nutrition (синие буллеты 🔹)
+    text = text.replace(/^[ \t]*[•\*\-\+][ \t]+/gm, '🔹 ');
+    text = text.replace(/^[ \t]*(\d+)[\.\)][ \t]+/gm, '🔹 ');
+
     text = text.replace(/(^|\s)_([^_]+)_(\s|$|[.,!?:;])/g, '$1<i>$2</i>$3');
     text = text.replace(/~~([^~]+)~~/g, '<s>$1</s>');
-    text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, '<a href="$2">$1</a>');
 
-    // 6. Очищаем мусорные теги (p, div, ul, ol, li, br)
+    // 8. Очищаем мусорные теги (p, div, ul, ol, li, br)
     text = text.replace(/<br\s*\/?>/gi, '\n');
     text = text.replace(/<\/?(p|div|ul|ol|li|span|h[1-6])[^>]*>/gi, '\n');
 
-    // 7. Восстанавливаем сохраненные блоки кода
+    // 9. Авто-оборачивание чисел, дат, процентов, валют и KPI в <code>...</code> (стиль синих цифр Ареса)
+    function wrapAsCode(content) {
+        const idx = inlineCodes.length;
+        inlineCodes.push('<code>' + content.trim() + '</code>');
+        return 'XYZINLINECODE' + idx + 'XYZ';
+    }
+
+    const lines = text.split('\n');
+    const formattedLines = lines.map(line => {
+        if (!line.trim()) return line;
+        if (line.includes('XYZCODEBLOCK')) return line;
+
+        let processed = line;
+
+        // А. Время и календарные даты (например: 14:00, 2026-10-15, 15.10.2026)
+        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|(\b\d{4}-\d{2}-\d{2}\b|\b\d{2}\.\d{2}\.\d{4}\b|\b\d{1,2}:\d{2}\b)/gi, (match, tag, dt) => {
+            if (tag) return tag;
+            if (dt) return wrapAsCode(dt);
+            return match;
+        });
+
+        // Б. Числовые значения параметров после двоеточия (🔹 Клики: 150)
+        processed = processed.replace(/^(🔹\s*[^:\n]{1,40}:\s*)([\d+-][^<>\n]*)$/g, (match, prefix, val) => {
+            const cleanVal = val.trim();
+            if (cleanVal.includes('XYZINLINECODE')) return match;
+            return prefix + wrapAsCode(cleanVal);
+        });
+
+        // В. Проценты: +15.2%, -5%, 93% (вне тегов и плейсхолдеров)
+        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|([+-]?\b\d+(?:[.,]\d+)?%)/g, (match, tag, pct) => {
+            if (tag) return tag;
+            if (pct) return wrapAsCode(pct);
+            return match;
+        });
+
+        // Г. Валюты и суммы: 540.50 EUR, 1500 грн, $50, €100 (вне тегов и плейсхолдеров)
+        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|(\b\d+(?:[.,]\d+)?\s*(?:EUR|USD|UAH|грн|\$|€)\b)/gi, (match, tag, cur) => {
+            if (tag) return tag;
+            if (cur) return wrapAsCode(cur);
+            return match;
+        });
+
+        // Д. Отдельные изолированные числа (за 14 дней, до 200 EUR)
+        processed = processed.replace(/(<[^>]+>|XYZ[A-Z0-9]+XYZ)|(\b(?<![a-zA-Z0-9_])\d+(?:[.,]\d+)?\b(?!\s*[:\/\-_a-zA-Z]))/g, (match, tag, num) => {
+            if (tag) return tag;
+            if (num) return wrapAsCode(num);
+            return match;
+        });
+
+        return processed;
+    });
+    text = formattedLines.join('\n');
+
+    // 10. Восстанавливаем сохраненные ссылки и код
+    links.forEach((link, idx) => {
+        text = text.replace('XYZLINK' + idx + 'XYZ', link);
+    });
     inlineCodes.forEach((code, idx) => {
         text = text.replace('XYZINLINECODE' + idx + 'XYZ', code);
     });
@@ -73,7 +153,7 @@ function formatTelegramHtml(rawText) {
         text = text.replace('XYZCODEBLOCK' + idx + 'XYZ', code);
     });
 
-    // 8. Балансировка тегов (автоматически закрываем незакрытые теги)
+    // 11. Балансировка тегов (автоматически закрываем незакрытые теги)
     const tagRegex = /<\/?([a-zA-Z0-9-]+)(\s+[^>]*)?>/g;
     const stack = [];
     const selfClosing = ['br', 'img', 'hr'];
@@ -101,7 +181,10 @@ function formatTelegramHtml(rawText) {
         text += '</' + unclosed + '>';
     }
 
-    // 9. Сжимаем чрезмерные пустые строки
+    // 12. Форматирование абзацев:
+    // Разделяем заголовки и текст аккуратным переносом
+    text = text.replace(/(<\/b>)\n([^\n🔹])/g, '$1\n\n$2');
+    // Сжимаем 3+ переноса строк до аккуратных 2 (абзацы)
     text = text.replace(/\n{3,}/g, '\n\n').trim();
 
     return text;

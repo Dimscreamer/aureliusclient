@@ -616,8 +616,8 @@ async function processMarkUpdate(update, db) {
             const isChatMode = cmd === '/fl_chat';
             if (!payload) {
                 const guideText = isChatMode
-                    ? `�� <b>Freelancehunt: Ответ клиенту в чате (Alpha-Freelance)</b>\n\nОтправьте сообщение заказчика после команды:\n<code>/fl_chat Клиент пишет: какая стоимость ведения и какие гарантии вы даете?</code>`
-                    : `�� <b>Freelancehunt: Генератор ставок (Alpha-Freelance)</b>\n\nОтправьте описание проекта, ТЗ или ссылку после команды:\n<code>/fl https://freelancehunt.com/project/... Настроить Google Shopping для интернет-магазина...</code>`;
+                    ? `💬 <b>FREELANCEHUNT: ОТВЕТ В ЧАТЕ</b>\n\nОтправьте сообщение заказчика после команды:\n<code>/fl_chat Клиент пишет: какая стоимость ведения?</code>`
+                    : `💼 <b>FREELANCEHUNT: ГЕНЕРАТОР СТАВОК</b>\n\nОтправьте описание проекта, ТЗ или ссылку после команды:\n<code>/fl https://freelancehunt.com/project/... Настроить Google Shopping...</code>`;
                 await sendTelegramMessage(chat.id, guideText, msg.message_id);
                 return { status: 'L0_HELP_SENT' };
             }
@@ -656,7 +656,7 @@ async function processMarkUpdate(update, db) {
 
         // Команда /id
         if (cmd === '/id' || cmd === 'мой id' || cmd === 'чат id') {
-            await sendTelegramMessage(chat.id, `�� <b>ID этого чата:</b> <code>${chat.id}</code>\n�� <b>Тип:</b> ${chat.type}`, msg.message_id);
+            await sendTelegramMessage(chat.id, `ℹ️ <b>ПАРАМЕТРЫ ЧАТА</b>\n\n🔹 ID этого чата: <code>${chat.id}</code>\n🔹 Тип чата: <code>${chat.type}</code>`, msg.message_id);
             return { status: 'L0_ID_SENT' };
         }
 
@@ -700,7 +700,7 @@ async function processMarkUpdate(update, db) {
                         await masterRef.set({ clients: cls }, { merge: true });
                     }
 
-                    await sendTelegramMessage(chat.id, `✅ <b>[Марк] Чат успішно прив'язано до клієнта "${updatedName}"!</b>\nТепер інвойси та аналітика надходитимуть прямо в цей чат.`, msg.message_id);
+                    await sendTelegramMessage(chat.id, `✅ <b>[МАРК] ПРИВ'ЯЗКА УСПІШНА</b>\n\n🔹 Клієнт: <b>${escapeHtml(updatedName)}</b>\n🔹 ID чату: <code>${chat.id}</code>\n\n<i>Тепер інвойси та аналітика надходитимуть прямо в цей чат.</i>`, msg.message_id);
                     return { status: 'L0_BIND_SUCCESS' };
                 } catch (e) {
                     console.error('Bind error:', e);
@@ -722,13 +722,13 @@ async function processMarkUpdate(update, db) {
     const clientName = client?.clientName || senderName;
 
     if (!client && !isPrivate) {
-        await sendTelegramMessage(chat.id, `⚠️ <b>[Марк]</b> Этот чат (<code>${chat.id}</code>) еще не привязан к клиенту в CRM. Привяжите его в панели CRM.`, msg.message_id);
+        await sendTelegramMessage(chat.id, `⚠️ <b>[МАРК] ЧАТ НЕ ПРИВЯЗАН</b>\n\n🔹 ID чата: <code>${chat.id}</code>\n\n<i>Этот чат еще не привязан к клиенту в CRM. Привяжите его в панели управления.</i>`, msg.message_id);
         return { status: 'UNBOUND_CHAT' };
     }
 
     const usage = await checkAndIncrementMarkUsage(chat.id, db);
     if (!usage.allowed) {
-        await sendTelegramMessage(chat.id, `⚠️ Достигнут месячный лимит сообщений (${MARK_CONFIG.MONTHLY_CHAT_LIMIT}). Напишите Дмитрию (@aureliusmarketingai) для расширения лимита.`, msg.message_id);
+        await sendTelegramMessage(chat.id, `⚠️ <b>ЛИМИТ СООБЩЕНИЙ</b>\n\n🔹 Месячный лимит: <code>${MARK_CONFIG.MONTHLY_CHAT_LIMIT}</code>\n\n<i>Напишите Дмитрию (@aureliusmarketingai) для расширения лимита.</i>`, msg.message_id);
         return { status: 'RATE_LIMIT_EXCEEDED' };
     }
 
@@ -759,10 +759,35 @@ async function processMarkUpdate(update, db) {
 
 ${adsContext.contextText}
 
-ОБЩИЕ ПРАВИЛА:
-1. Язык: Отвечай на языке собеседника (Украинский или Русский).
-2. Субординация: Изменение бюджетов и стратегические решения согласует Дмитрий.
-3. ОБЯЗАТЕЛЬНО соблюдай ВСЕ правила форматирования из контекста выше (HTML-теги <code>...</code> для ВСЕХ цифр, <b>...</b> для заголовков).
+🎨 СТРОГИЕ ПРАВИЛА ОФОРМЛЕНИЯ ВСЕХ СООБЩЕНИЙ (ФИРМЕННЫЙ СТИЛЬ ARES / MARK HTML):
+Ты ОБЯЗАН оформлять АБСОЛЮТНО ВСЕ свои ответы строго в Telegram HTML по следующим стандартам:
+1. РАЗБИВКА НА АБЗАЦЫ И ЛАКОНИЧНОСТЬ:
+   - Никаких длинных сплошных текстов! Разбивай ответ на короткие, ёмкие абзацы.
+   - Каждый смысловой блок ОБЯЗАТЕЛЬНО отделяй пустой строкой (двойным переносом строки \\n\\n).
+   - Отвечай лаконично, структурированно, без воды и пустых предисловий.
+2. ЗАГОЛОВКИ И АКЦЕНТЫ:
+   - Заголовок ответа всегда начинай с релевантного эмодзи и делай жирным: например, 📊 <b>СВОДКА РЕКЛАМЫ</b> или 💡 <b>АНАЛИЗ СИТУАЦИИ</b> или 🤖 <b>МАРК | АНАЛИТИКА</b>.
+   - Подзаголовки секций также оформляй жирным: <b>ПАРАМЕТРЫ:</b>, <b>РЕКОМЕНДАЦИИ:</b>.
+3. СПИСКИ И БУЛЛЕТЫ:
+   - Для всех списков и перечислений используй аккуратный синий эмодзи-буллет: 🔹 (не дефисы и не звездочки).
+4. СИНИЕ ЦИФРЫ И СПЕЦИАЛЬНЫЙ ШРИФТ (<code>...</code>):
+   - АБСОЛЮТНО ВСЕ цифры, суммы, валюты, проценты, даты, время, формулы и KPI ОБЯЗАТЕЛЬНО оборачивай в тег <code>...</code>!
+   - В Telegram тег <code> отображается специальным моноширинным шрифтом с контрастным/синим выделением.
+   - Примеры:
+     🔹 Клики: <code>150</code>
+     🔹 Расход: <code>540.50 EUR</code>
+     🔹 Конверсии: <code>12</code>
+     🔹 CPA: <code>45.04 EUR</code>
+     🔹 ROAS: <code>350%</code>
+     🔹 Изменение: <code>+18.5%</code>
+     🔹 Время: <code>14:00</code>
+     🔹 Дедлайн: <code>15 октября</code>
+5. СТРОГО HTML (БЕЗ MARKDOWN):
+   - Запрещено использовать Markdown (**жирный**, *курсив*, \`\`\`код\`\`\`, # заголовки).
+   - Используй ТОЛЬКО разрешенные HTML-теги: <b>...</b>, <i>...</i>, <code>...</code>.
+6. ЯЗЫК И СУБОРДИНАЦИЯ:
+   - Отвечай на языке собеседника (Украинский или Русский).
+   - Изменение бюджетов и стратегические решения согласует Дмитрий.
 `;
 
 
