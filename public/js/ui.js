@@ -919,7 +919,8 @@ window.switchAdsPeriod = function(period) {
 };
 
 window.fmtAdsMoney = function(v, cur) {
-    const n = parseFloat(v || 0);
+    let n = parseFloat(v || 0);
+    if (isNaN(n)) n = 0;
     const s = n >= 100 ? Math.round(n).toLocaleString('ru-RU') : n.toFixed(2);
     return s + '<span class="kpi-cur">' + cur + '</span>';
 };
