@@ -453,7 +453,112 @@ async function getClientByTelegramChatId(chatId, db) {
     return null;
 }
 
+/**
+ * Получить клиента из CRM по его clientId (для запросов по ID проекта)
+ */
+async function getClientById(clientId, db) {
+    if (!clientId || !db) return null;
+    const cleanId = clientId.toString().trim();
 
+    try {
+        const masterRef = db.collection('artifacts')
+            .doc('aureliusclients')
+            .collection('public').doc('data')
+            .collection('clients_db').doc('master');
+
+        const masterSnap = await masterRef.get();
+        if (masterSnap.exists) {
+            const cls = masterSnap.data().clients || [];
+            const mc = cls.find(c => (c.id || '').toString() === cleanId);
+            if (mc) {
+                const client = {
+                    id: mc.id,
+                    clientId: mc.id,
+                    clientName: mc.name || '',
+                    telegramChatId: (mc.telegramChatId || '').toString(),
+                    adsId: (mc.adsId || '').replace(/\D/g, '').trim(),
+                    siteUrl: mc.links?.site || '',
+                    amount: mc.amount || '0',
+                    currency: mc.ads_currency || 'EUR',
+                    monthly_stats: mc.monthly_stats || [],
+                    clicks: mc.cachedClicks || '0',
+                    cost: mc.cachedCost || '0',
+                    convs: mc.cachedConvs || '0',
+                    cpa: mc.cachedCpa || '0',
+                    cachedConvDetails: mc.cachedConvDetails || null,
+                    cachedConvValue: mc.cachedConvValue || '0',
+                    cachedRoas: mc.cachedRoas || '0',
+                    cachedAov: mc.cachedAov || '0',
+                    cachedImps: mc.cachedImps || mc.cachedImpressions || '0',
+                    periods: null,
+                    campaigns: [],
+                    queries: [],
+                    conversions: []
+                };
+
+                if (client.adsId) {
+                    try {
+                        const siSnap = await db.collection('scheduled_invoices')
+                            .where('adsId', '==', client.adsId).limit(1).get();
+                        if (!siSnap.empty) {
+                            const si = siSnap.docs[0].data();
+                            client.periods     = si.periods     || null;
+                            client.campaigns   = si.campaigns   || [];
+                            client.queries     = si.queries     || [];
+                            client.conversions = si.conversions || [];
+                            if (si.cachedClicks)       client.clicks   = si.cachedClicks;
+                            if (si.cachedCost)         client.cost     = si.cachedCost;
+                            if (si.cachedConvs)        client.convs    = si.cachedConvs;
+                            if (si.cachedCpa)          client.cpa      = si.cachedCpa;
+                            if (si.cachedConvDetails)  client.cachedConvDetails = si.cachedConvDetails;
+                            if (si.cachedConvValue)    client.cachedConvValue   = si.cachedConvValue;
+                            if (si.cachedRoas)         client.cachedRoas        = si.cachedRoas;
+                            if (si.cachedAov)          client.cachedAov         = si.cachedAov;
+                            if (si.cachedImpressions || si.cachedImps) {
+                                client.cachedImps = si.cachedImpressions || si.cachedImps;
+                            }
+                        }
+                    } catch (siErr) {
+                        console.error('[Mark_Kernel] scheduled_invoices enrich error in getClientById:', siErr.message);
+                    }
+                }
+                return client;
+            }
+        }
+
+        const siDoc = await db.collection('scheduled_invoices').doc(cleanId).get();
+        if (siDoc.exists) {
+            const d = siDoc.data();
+            return {
+                id: siDoc.id,
+                clientId: d.clientId || siDoc.id,
+                clientName: d.clientName || '',
+                telegramChatId: (d.telegramChatId || '').toString(),
+                adsId: d.adsId || '',
+                siteUrl: d.siteUrl || '',
+                amount: d.amount || '0',
+                currency: d.currency || 'EUR',
+                monthly_stats: [],
+                clicks: d.cachedClicks || '0',
+                cost: d.cachedCost || '0',
+                convs: d.cachedConvs || '0',
+                cpa: d.cachedCpa || '0',
+                cachedConvDetails: d.cachedConvDetails || null,
+                cachedConvValue: d.cachedConvValue || '0',
+                cachedRoas: d.cachedRoas || '0',
+                cachedAov: d.cachedAov || '0',
+                cachedImps: d.cachedImpressions || d.cachedImps || '0',
+                periods: d.periods || null,
+                campaigns: d.campaigns || [],
+                queries: d.queries || [],
+                conversions: d.conversions || []
+            };
+        }
+    } catch (e) {
+        console.error('[Mark_Kernel] getClientById error:', e.message);
+    }
+    return null;
+}
 
 /**
  * Проверка и инкремент лимита сообщений в месяц
@@ -814,10 +919,21 @@ async function processMarkUpdate(update, db) {
     // =========================================================================
     // 3. ПРОВЕРКА КЛИЕНТА В CRM И ЛИМИТОВ
     // =========================================================================
-    // (client уже определен выше)
-    const clientName = client?.clientName || senderName;
+    let targetClient = client;
+    if (!targetClient && db) {
+        // Проверяем, упоминается ли в тексте конкретный ID проекта (например: "проект 55", "проекту 55", "#55")
+        const pidMatch = text.match(/(?:проект|проекту|проекта|#)\s*([0-9a-zA-Z_-]+)/i);
+        if (pidMatch && pidMatch[1]) {
+            targetClient = await getClientById(pidMatch[1], db);
+            if (targetClient) {
+                console.log(`[Mark_Kernel] Resolved client #${targetClient.id} directly from prompt reference`);
+            }
+        }
+    }
 
-    if (!client && !isPrivate) {
+    const clientName = targetClient?.clientName || senderName;
+
+    if (!targetClient && !isPrivate) {
         await sendTelegramMessage(chat.id, `⚠️ <b>[МАРК] ЧАТ НЕ ПРИВЯЗАН</b>\n\n🔹 ID чата: <code>${chat.id}</code>\n\n<i>Этот чат еще не привязан к клиенту в CRM. Привяжите его в панели управления.</i>`, msg.message_id);
         return { status: 'UNBOUND_CHAT' };
     }
@@ -847,8 +963,8 @@ async function processMarkUpdate(update, db) {
     let history = chatHistoryMemory.get(chat.id.toString()) || [];
 
     // Собираем контекст активного модуля
-    const adsContext = await Module_GoogleAds.buildContext(client, cleanUserPrompt);
-    const activeProjectId = client?.id || '55';
+    const adsContext = await Module_GoogleAds.buildContext(targetClient, cleanUserPrompt);
+    const activeProjectId = targetClient?.id || '55';
 
     const systemPrompt = `ТЫ — «МАРК», ИНТЕЛЛЕКТУАЛЬНЫЙ ОПЕРАЦИОННЫЙ ЦЕНТР И ПЕРФОРМАНС-АНАЛИТИК АГЕНТСТВА AURELIUS ADS (aurelius.marketing).
 Твой создатель и старший партнер — Дмитрий (@aureliusmarketingai), основатель агентства Aurelius Ads.
@@ -867,10 +983,13 @@ ${adsContext.contextText}
 6. Чистота кода: Строго закрывай все HTML-теги. Никаких символов < и >, кроме как в тегах Telegram.
    СТРОГИЙ ЗАПРЕТ НА MARKDOWN (*, _, \`\`\`, #) и неподдерживаемые теги (<div>, <p>, <span>, <br>). Переносы строк только через \\n.
 7. Язык и субординация: Отвечай на языке собеседника (Украинский или Русский). Изменение бюджетов и стратегические решения согласует Дмитрий.
-8. ПРАВИЛО ИНТЕРАКТИВНЫХ ССЫЛОК НА ЗАДАЧИ:
-   Если в ответе упоминаются текущие договоренности, дедлайны, этапы работы, спринт или планы проекта, ВСЕГДА оборачивай ключевое слово (например: «задачи», «список задач», «текущий спринт») в HTML-ссылку формата Deep-Link:
-   <a href="https://t.me/AureliusMarketingAI_bot?start=tasks_${activeProjectId}">список задач</a>
-   (или слово «задачи», «плановые задачи»). Марк сам конвертирует эту ссылку в рабочий вызов трекера.
+8. ПРАВИЛО РЕЛЕВАНТНОСТИ ДИПЛИНКОВ НА ЗАДАЧИ:
+   НЕ вставляй ссылку на задачи в каждое сообщение! Это инструмент точечного действия, а не спам.
+   Используй ссылку <a href="https://t.me/AureliusMarketingAI_bot?start=tasks_${activeProjectId}">задачи</a> ТОЛЬКО в следующих случаях:
+   1. Прямой вопрос клиента или Дмитрия о текущем плане, спринте или статусе выполнения работ.
+   2. Когда в диалоге зафиксирована новая договоренность или обнаружена проблема, требующая постановки новой задачи.
+   3. В финале аналитической сводки при предложении следующего шага («Могу добавить это в <a href="https://t.me/AureliusMarketingAI_bot?start=tasks_${activeProjectId}">задачи</a> проекта»).
+   В обычных коротких ответах, приветствиях, уточнениях или дежурных репликах ссылки на задачи СТРОГО ЗАПРЕЩЕНЫ.
 `;
 
 
@@ -905,8 +1024,70 @@ ${adsContext.contextText}
         };
     }
 
-    // Отправка ответа в Telegram
+    // Отправка ответа в Telegram (Публичный контур)
     const sentResp = await sendTelegramMessage(chat.id, aiRes.reply, msg.message_id);
+
+    // =========================================================================
+    // 5.1 ТЕНЕВОЙ КОНТУР (DUAL-LOOP PROTOCOL / GHOST TELEMETRY)
+    // =========================================================================
+    // Срабатывает при запросах статуса/сводки/анализа рекламы («как дела», «что по рекламе», «сводка»)
+    const statusQueryRegex = /(как\s+(у\s+нас\s+)?дела|что\s+(там\s+)?по\s+(проекту|рекламе)|сделай\s+(срез|сводку)|сводка|срез|как\s+успехи|отчет|статистика|стата)/i;
+    const isStatusQuery = statusQueryRegex.test(cleanUserPrompt) || statusQueryRegex.test(text);
+
+    if (isStatusQuery && (targetClient || client)) {
+        const reportingClient = targetClient || client;
+        try {
+            const adminChatId = MARK_CONFIG.ADMIN_CHAT_ID;
+            // Генерируем хирургический Ghost Report без цензуры
+            const ghostPrompt = `ТЫ — ТЕНЕВОЙ МОНИТОР МАРКА (GHOST TELEMETRY).
+Ты формируешь закрытый инженерный отчет лично администратору агентства Дмитрию (@aureliusmarketingai) в ответ на публичный статус-запрос клиента.
+
+ПРОЕКТ: #${activeProjectId} (${reportingClient.clientName || 'Клиент'})
+ДАННЫЕ ПО АККАУНТУ GOOGLE ADS:
+${adsContext.contextText}
+
+ПУБЛИЧНЫЙ ОТВЕТ МАРКА КЛИЕНТУ:
+"${aiRes.reply}"
+
+ЗАДАЧА:
+Сформируй хирургический, инженерный отчет БЕЗ цензуры, БЕЗ сглаживания и дипломатии.
+Укажи реальные слабые места, сливы бюджета, просадки CPA, неэффективные площадки/кампании и конкретный список ручных действий (Quick Fix) для Дмитрия.
+
+ФОРМАТ СООБЩЕНИЯ (TELEGRAM HTML):
+🛰️ <b>GHOST TELEMETRY | РЕАЛЬНЫЙ СРЕЗ</b>
+Проект: <code>#${activeProjectId}-${escapeHtml(reportingClient.clientName || 'Project')}</code> • В ответ на запрос статуса в чате
+
+<b>⚠️ Обнаруженные узкие места:</b>
+1. [Кампания / Группа / Площадка]: [Фактическая проблема: рост CPA, клики в приложениях, исчерпание лимита, просадка CR].
+2. [Вторая проблема, если есть, или факт по расходу/аукционам].
+
+<blockquote>🔧 <b>Что нужно подтянуть руками (Quick Fix):</b>
+• [Точное действие 1: заминусовать фразы, отключить площадки, скорректировать ставку/бюджет].
+• [Точное действие 2].
+• [Точное действие 3].</blockquote>
+
+Строго соблюдай валидный Telegram HTML: <b>, <code>, <blockquote>. Никакого Markdown.
+`;
+
+            const ghostRes = await callMarkLLM({
+                systemPrompt: ghostPrompt,
+                messages: [],
+                userPrompt: `Сформируй Ghost Telemetry для проекта #${activeProjectId} по текущему состоянию аккаунта.`,
+                senderName: 'System',
+                temperature: 0.3,
+                maxTokens: 1500
+            });
+
+            if (ghostRes && ghostRes.reply) {
+                // Если запрос пришел из публичного чата, отправляем скрыто в личку Дмитрия.
+                // Если запрос пришел прямо из лички Дмитрия, отправляем следом в личку, чтобы он видел оба слоя.
+                await sendTelegramMessage(adminChatId, ghostRes.reply);
+                console.log(`[Mark_Kernel] Dual-loop Ghost Telemetry sent to admin (${adminChatId}) for project #${activeProjectId}`);
+            }
+        } catch (ghostErr) {
+            console.error('[Mark_Kernel] Dual-loop Ghost Telemetry error:', ghostErr.message);
+        }
+    }
 
     // Сохраняем ответ Марка в историю чата
     if (client && aiRes && aiRes.reply) {
