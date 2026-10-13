@@ -119,6 +119,12 @@ function formatTelegramHtml(rawText) {
     text = text.replace(/<br\s*\/?>/gi, '\n');
     text = text.replace(/<\/?(p|div|ul|ol|li|span|h[1-6])[^>]*>/gi, '\n');
 
+    // 8.1 Убираем паразитные переносы строк между меткой и числом («Бюджет:\n$84.20» -> «Бюджет: $84.20»)
+    // Нумерованные списки («Шаги:\n1. Поиск») не трогаем.
+    text = text.replace(/:[ \t]*\n+[ \t]*(?!\d+[.)]\s)(?=(?:[$€₴+\-])?\d)/g, ': ');
+    text = text.replace(/(XYZINLINECODE\d+XYZ)[ \t]*\n+[ \t]*(?=\/|из\s|\()/g, '$1 ');
+    text = text.replace(/([:：])[ \t]*\n+[ \t]*(XYZINLINECODE\d+XYZ)/g, '$1 $2');
+
     // 9. Авто-оборачивание чисел, дат, процентов, валют и KPI в <code>...</code> (стиль синих цифр)
     function wrapAsCode(content) {
         const idx = inlineCodes.length;
@@ -177,7 +183,10 @@ function formatTelegramHtml(rawText) {
         text = text.replace('XYZLINK' + idx + 'XYZ', link);
     });
     inlineCodes.forEach((code, idx) => {
-        text = text.replace('XYZINLINECODE' + idx + 'XYZ', code);
+        // <b><code>…</code></b>: на мобилках жирный моноширинный текст, на десктопе — синяя плашка.
+        // Если код уже внутри <b>…</b>, повторно не оборачиваем.
+        const re = new RegExp('(<b>)?XYZINLINECODE' + idx + 'XYZ');
+        text = text.replace(re, (m, openB) => openB ? '<b>' + code : '<b>' + code + '</b>');
     });
     codeBlocks.forEach((code, idx) => {
         text = text.replace('XYZCODEBLOCK' + idx + 'XYZ', code);
@@ -212,7 +221,8 @@ function formatTelegramHtml(rawText) {
     }
 
     // 12. Форматирование абзацев (воздух \n\n):
-    text = text.replace(/(<\/b>)\n([^\n•🔹<])/g, '$1\n\n$2');
+    // Не разрываем заголовок и строку «Проект:» (должны идти на соседних строках)
+    text = text.replace(/(?<!<\/code>)(<\/b>)\n(?!Проект:)([^\n•🔹<])/g, '$1\n\n$2');
     text = text.replace(/(<\/blockquote>)\n([^\n<])/g, '$1\n\n$2');
     // Сжимаем 3+ переноса строк до аккуратных 2 (абзацы)
     text = text.replace(/\n{3,}/g, '\n\n').trim();
