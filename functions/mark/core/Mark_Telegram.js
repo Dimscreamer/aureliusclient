@@ -24,10 +24,13 @@ function formatTelegramHtml(rawText) {
     });
 
     // 2. Сохраняем уже существующий инлайн-код
+    // ВАЖНО ДЛЯ TELEGRAM MOBILE (iOS / Android):
+    // Внутри <code>...</code> КАТЕГОРИЧЕСКИ запрещены переводы строк \n и пробелы вплотную к тегам.
     const inlineCodes = [];
     text = text.replace(/`([^`\n]+)`/g, (match, code) => {
         const idx = inlineCodes.length;
-        const escapedCode = code
+        const cleanCode = code.replace(/[\r\n]+/g, ' ').trim();
+        const escapedCode = cleanCode
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
@@ -36,7 +39,8 @@ function formatTelegramHtml(rawText) {
     });
     text = text.replace(/<code>([\s\S]*?)<\/code>/gi, (match, code) => {
         const idx = inlineCodes.length;
-        inlineCodes.push('<code>' + code + '</code>');
+        const cleanCode = code.replace(/[\r\n]+/g, ' ').trim();
+        inlineCodes.push('<code>' + cleanCode + '</code>');
         return 'XYZINLINECODE' + idx + 'XYZ';
     });
 
