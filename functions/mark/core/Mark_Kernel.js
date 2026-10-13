@@ -236,6 +236,83 @@ async function detectAndScheduleChatTask(db, client, msgData) {
     }
 }
 
+/**
+ * Загрузка актуального пула задач клиента из Firestore
+ */
+async function getClientTasksFromDb(db, projectId) {
+    if (!db || !projectId) return [];
+    try {
+        const snap = await db.collection("client_tasks")
+            .where("clientId", "==", projectId.toString())
+            .get();
+        const tasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        tasks.sort((a, b) => (a.targetDate || '').localeCompare(b.targetDate || ''));
+        return tasks;
+    } catch (e) {
+        console.error('[getClientTasksFromDb] Error:', e.message);
+        return [];
+    }
+}
+
+/**
+ * Эталонная сборка карточки трекера задач (Next-Gen UI Terminal HTML)
+ */
+function renderTaskTrackerTemplate(projectId, tasks, client = null) {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('ru-RU', { timeZone: 'Europe/Kyiv' });
+    const timeStr = now.toLocaleTimeString('ru-RU', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit' });
+    const todayIso = now.toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+
+    const clientTitle = client?.name || client?.clientName ? `${escapeHtml(client.name || client.clientName)} ` : '';
+    const headerLine = `📋 <b>ШТАБ МАРКА | АКТУАЛЬНЫЙ ТРЕКЕР ЗАДАЧ</b>\n` +
+        `Проект: ${clientTitle}<code>#${escapeHtml(projectId)}</code> • Обновлено: <code>${dateStr} ${timeStr}</code>`;
+
+    const inProgressTasks = (tasks || []).filter(t => t.status !== 'completed');
+    const completedTasks = (tasks || []).filter(t => t.status === 'completed');
+
+    let inProgressSection = '<b>В работе (In Progress):</b>\n';
+    if (inProgressTasks.length > 0) {
+        const items = inProgressTasks.map((t, idx) => {
+            const assignee = t.type === 'client' ? 'Клиент' : 'Агентство (Дмитрий)';
+            let statusDesc = 'В графике спринта';
+            if (t.targetDate) {
+                if (t.targetDate < todayIso) {
+                    statusDesc = '⚠️ Просрочено';
+                } else if (t.targetDate === todayIso) {
+                    statusDesc = '🔥 Дедлайн сегодня';
+                }
+            }
+            return `⏳ ${idx + 1}. <b>${escapeHtml(t.text || t.title || 'Задача')}</b>\n` +
+                   `   • Дедлайн: <code>${t.targetDate || 'Не указан'}</code>\n` +
+                   `   • Ответственный: <code>${assignee}</code>\n` +
+                   `   • Статус: <code>${statusDesc}</code>`;
+        });
+        inProgressSection += items.join('\n\n');
+    } else {
+        inProgressSection += `<i>Все запланированные задачи выполнены. Активных задач в работе нет.</i>`;
+    }
+
+    let archiveSection = '';
+    if (completedTasks.length > 0) {
+        const completedItems = completedTasks.slice(0, 10).map(t => {
+            const cDate = t.completedDate || t.targetDate || dateStr;
+            return `✅ ${cDate} — ${escapeHtml(t.text || t.title || 'Задача')}`;
+        }).join('\n');
+        archiveSection = `<blockquote expandable><b>Выполнено за последние 7 дней (Archive):</b>\n${completedItems}</blockquote>`;
+    } else {
+        archiveSection = `<blockquote expandable><b>Выполнено за последние 7 дней (Archive):</b>\n<i>Завершённых задач в архиве пока нет.</i></blockquote>`;
+    }
+
+    const overdueCount = inProgressTasks.filter(t => t.targetDate && t.targetDate < todayIso).length;
+    let verdictSection = '';
+    if (overdueCount === 0) {
+        verdictSection = `<blockquote>⚡ <b>Темп спринта:</b>\nВсе ключевые дедлайны соблюдаются. Просроченных задач: <code>0</code>.</blockquote>`;
+    } else {
+        verdictSection = `<blockquote>⚡ <b>Темп спринта:</b>\nВнимание: обнаружено просроченных задач: <code>${overdueCount}</code>. Требуется актуализация сроков.</blockquote>`;
+    }
+
+    return `${headerLine}\n\n${inProgressSection}\n\n${archiveSection}\n\n${verdictSection}`;
+}
 
 /**
  * Логирование трейса в Mark_SysLogs (в формате Ареса)
@@ -708,6 +785,25 @@ async function processMarkUpdate(update, db) {
             }
         }
 
+        // Интерактивный трекер задач по Deep-Link ссылке (/start tasks_PROJECTID)
+        const tasksMatch = text.match(/^\/start(?:@\S+)?\s+tasks_(\S+)/i) || 
+                           text.match(/^\/startgroup(?:@\S+)?\s+tasks_(\S+)/i) || 
+                           text.match(/^\/tasks_(\S+)/i);
+        const tasksProjectId = (payload && payload.startsWith('tasks_')) ? payload.replace('tasks_', '').trim() : (tasksMatch ? tasksMatch[1].trim() : null);
+        if (tasksProjectId) {
+            sendChatAction(chat.id, 'typing');
+            try {
+                const tasks = await getClientTasksFromDb(db, tasksProjectId);
+                const trackerHtml = renderTaskTrackerTemplate(tasksProjectId, tasks, client);
+                await sendTelegramMessage(chat.id, trackerHtml, msg.message_id);
+                return { status: 'L0_TASKS_TRACKER_SENT', projectId: tasksProjectId, taskCount: tasks.length };
+            } catch (e) {
+                console.error('[Mark_Kernel] tasks_ deeplink error:', e.message);
+                await sendTelegramMessage(chat.id, `❌ <i>Ошибка загрузки задач проекта #${escapeHtml(tasksProjectId)}: ${escapeHtml(e.message)}</i>`, msg.message_id);
+                return { status: 'L0_TASKS_TRACKER_ERROR', error: e.message };
+            }
+        }
+
         // Команда /help или /start
         if (cmd === '/help' || cmd === '/start') {
             await sendTelegramMessage(chat.id, Module_Automation.getHelpMessage(), msg.message_id);
@@ -752,6 +848,7 @@ async function processMarkUpdate(update, db) {
 
     // Собираем контекст активного модуля
     const adsContext = await Module_GoogleAds.buildContext(client, cleanUserPrompt);
+    const activeProjectId = client?.id || '55';
 
     const systemPrompt = `ТЫ — «МАРК», ИНТЕЛЛЕКТУАЛЬНЫЙ ОПЕРАЦИОННЫЙ ЦЕНТР И ПЕРФОРМАНС-АНАЛИТИК АГЕНТСТВА AURELIUS ADS (aurelius.marketing).
 Твой создатель и старший партнер — Дмитрий (@aureliusmarketingai), основатель агентства Aurelius Ads.
@@ -770,6 +867,10 @@ ${adsContext.contextText}
 6. Чистота кода: Строго закрывай все HTML-теги. Никаких символов < и >, кроме как в тегах Telegram.
    СТРОГИЙ ЗАПРЕТ НА MARKDOWN (*, _, \`\`\`, #) и неподдерживаемые теги (<div>, <p>, <span>, <br>). Переносы строк только через \\n.
 7. Язык и субординация: Отвечай на языке собеседника (Украинский или Русский). Изменение бюджетов и стратегические решения согласует Дмитрий.
+8. ПРАВИЛО ИНТЕРАКТИВНЫХ ССЫЛОК НА ЗАДАЧИ:
+   Если в ответе упоминаются текущие договоренности, дедлайны, этапы работы, спринт или планы проекта, ВСЕГДА оборачивай ключевое слово (например: «задачи», «список задач», «текущий спринт») в HTML-ссылку формата Deep-Link:
+   <a href="https://t.me/AureliusMarketingAI_bot?start=tasks_${activeProjectId}">список задач</a>
+   (или слово «задачи», «плановые задачи»). Марк сам конвертирует эту ссылку в рабочий вызов трекера.
 `;
 
 

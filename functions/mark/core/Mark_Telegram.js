@@ -42,19 +42,31 @@ function formatTelegramHtml(rawText) {
 
     // 3. Сохраняем ссылки (a href и raw URLs), чтобы не ломать цифры внутри адресов
     const links = [];
-    text = text.replace(/<a\s+href="([^"]+)">([\s\S]*?)<\/a>/gi, (match) => {
+    text = text.replace(/<a\s+href="([^"]+)">([\s\S]*?)<\/a>/gi, (match, href, label) => {
         const idx = links.length;
-        links.push(match);
+        let finalHref = href;
+        if (finalHref.includes('t.me/AureliusMarketingAI_bot')) {
+            finalHref = finalHref.replace('t.me/AureliusMarketingAI_bot', 't.me/MyConversionsBotPpcDmitroBot');
+        }
+        links.push(`<a href="${finalHref}">${label}</a>`);
         return 'XYZLINK' + idx + 'XYZ';
     });
     text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, label, url) => {
         const idx = links.length;
-        links.push(`<a href="${url}">${label}</a>`);
+        let finalUrl = url;
+        if (finalUrl.includes('t.me/AureliusMarketingAI_bot')) {
+            finalUrl = finalUrl.replace('t.me/AureliusMarketingAI_bot', 't.me/MyConversionsBotPpcDmitroBot');
+        }
+        links.push(`<a href="${finalUrl}">${label}</a>`);
         return 'XYZLINK' + idx + 'XYZ';
     });
     text = text.replace(/(https?:\/\/[^\s<]+)/g, (match, url) => {
         const idx = links.length;
-        links.push(`<a href="${url}">${url}</a>`);
+        let finalUrl = url;
+        if (finalUrl.includes('t.me/AureliusMarketingAI_bot')) {
+            finalUrl = finalUrl.replace('t.me/AureliusMarketingAI_bot', 't.me/MyConversionsBotPpcDmitroBot');
+        }
+        links.push(`<a href="${finalUrl}">${finalUrl}</a>`);
         return 'XYZLINK' + idx + 'XYZ';
     });
 
