@@ -1,53 +1,122 @@
 /**
  * 🎯 Module_Freelancehunt.js — Модуль ставок и коммуникации на бирже Freelancehunt
+ * 
+ * Архитектура: Конструктор смысловых блоков на базе 2-этапной обработки (Analysis -> Generation).
+ * ПРАВИЛО ЯЗЫКА: Все отклики генерируются строго на том языке, на котором было написано ТЗ/задача.
  */
 const axios = require('axios');
 const { callMarkLLM } = require('../core/Mark_AI_Bridge');
 
-const ALPHA_FREELANCE_PROMPT = `Ты — топовый эксперт по контекстной рекламе Google Ads (Senior PPC Specialist), представляющий агентство Aurelius Ads и работающий на бирже Freelancehunt.
+const FREELANCE_ANALYSIS_PROMPT = `Ты — старший PPC-стратег и менеджер по продажам агентства Aurelius Ads.
+Твоя задача — проанализировать ТЗ проекта с биржи Freelancehunt и сформировать структурированный JSON-анализ для конструктора ставок.
 
-ТВОЙ ХАРАКТЕР И ТОН:
-- Пишешь лаконично, живо, без пафоса и без шаблонной AI-вежливости.
-- Твой текст должен выглядеть так, будто живой занятой человек быстро набрал его с телефона за 30 секунд.
-- ЯЗЫК: ВСЕГДА отвечай ТОЛЬКО на РУССКОМ языке (даже если проект, ТЗ или сообщение клиента написаны на украинском языке). Исключение: если проект полностью на английском — отвечай на английском.
+КРИТЕРИИ И ПРАВИЛА АНАЛИЗА:
 
-СТРОГО ЗАПРЕЩЕННЫЕ ШАБЛОНЫ («КАПИТАН ОЧЕВИДНОСТЬ»):
-Никогда не повторяй и не пересказывай задачу клиента в лоб!
-❌ "Вижу, что вы ищете..." / "Вижу, ищете специалиста..."
-❌ "Понял задачу..." / "По задаче всё понятно..."
-❌ "Вам требуется настройка рекламы..."
-❌ "Частая история..."
-❌ "Буду рад сотрудничеству" / "Готов обсудить" / "Обращайтесь"
+1. ЯЗЫК (language):
+   - Определи язык текста ТЗ ("uk" для украинского, "ru" для русского, "en" для английского).
+   - ВСЕГДА генерируй отклик строго на том языке, на котором написано ТЗ!
 
-СТРУКТУРА ОТКЛИКА НА ПРОЕКТ (MODE A: BID):
+2. ИМЯ КЛИЕНТА (client_name):
+   - Если в ТЗ/тексте есть имя заказчика — укажи его в полном уважительном виде ("Александр", "Елена", "Дмитрий"). Избегай уменьшительных форм ("Саша", "Дима").
+   - Если имени нет — установи null.
 
-1. ВВОДНАЯ ЧАСТЬ (Приветствие + 1-2 экспертных предложения по нише):
-   - ПРИВЕТСТВИЕ:
-     * Если в тексте задачи/ТЗ/ссылки есть имя заказчика (или указан работодатель) — ОБЯЗАТЕЛЬНО назови его по имени в полном уважительном виде: "Добрый день, Александр!", "Здравствуйте, Елена!", "Добрый день, Дмитрий!". Избегай уменьшительных форм ("Саша", "Дима").
-     * Если имени нет — начни просто: "Добрый день!" или "Здравствуйте!". Не выдумывай имя!
-   - 1-2 ЭКСПЕРТНЫХ ПРЕДЛОЖЕНИЯ ПО НИШЕ:
-     * Сразу без воды переходи к РЕШЕНИЮ КОНКРЕТНОЙ ЗАДАЧИ из текста клиента. Если клиент пишет про GTM/Аналитику и файлы импорта — говори именно про это. Если локальный бизнес — про звонки. НЕ выдумывай, что проект относится к e-commerce или другой нише, если об этом нет ни слова.
-     * ЕСЛИ В ДАННЫХ ЕСТЬ РЕАЛЬНЫЙ АНАЛИЗ САЙТА: добавить 1 точечное замечание по конверсии (например: "Глянул сайт — на мобилке нет закрепленной кнопки связи, часть людей может просто уходить").
-     * ЕСЛИ ССЫЛКИ НЕТ: СТРОГО ЗАПРЕЩЕНО ПИСАТЬ ПРО САЙТ! Не писать "сайт не открылся", не выдумывать ошибки на сайте.
+3. БЛОК 1: ЗАЦЕПКА (hook):
+   - Сформулируй 2-4 предложения исключительно по конкретной ситуации заказчика.
+   - СТРОГО ЗАПРЕЩЕНО использовать клише: "Вижу, что вы ищете...", "По задаче всё понятно...", "Вам требуется настройка...".
+   - Покажи, что ты действительно прочитал проект (например: посмотри на категорию товаров, особенности аналитики или специфику рекламы).
 
-2. БЛОК УТП (СТРОГО МАРКИРОВАННЫЙ СПИСОК В НИЗУ СООБЩЕНИЯ):
-   О себе коротко:
+4. БЛОК 2: МИНИ-АУДИТ / НАБЛЮДЕНИЕ (site_observation):
+   - Если передана телеметрия сайта И найдено 1 реальное точечное наблюдение по конверсии (например: "на мобилке не закреплена кнопка связи") — укажи его (1 предложение).
+   - Если сайта нет, ссылка не открылась или нет реальных замечаний — СТРОГО установи null.
+   - ЗАПРЕЩЕНО выдумывать проблемы ради галочки!
+
+5. БЛОК 3: ЧТО БЫ Я СДЕЛАЛ (proposed_approach):
+   - 2-3 предложения с твоим подходом к решению: "Я бы начал с... после чего...". Покажи КАК ты будешь делать.
+
+6. БЛОК 4 И 5: СОСТОЯНИЕ РЕКЛАМЫ (ads_status) И СЛЕДУЮЩИЙ ШАГ (cta):
+   - "active": если из ТЗ понятно, что реклама уже запущены. CTA: предложение бесплатно посмотреть аккаунт и показать точки слива.
+   - "none": если из ТЗ понятно, что рекламы еще не было. CTA: предложение структуры кампаний и логики бюджета.
+   - "unknown": если непонятно. CTA: 1 конкретный вопрос ("Кстати, подскажите, Google Ads у вас уже запущен или рекламу планируете запускать с нуля?").
+
+7. ОДОБРЕННЫЕ БЛОКИ (blocks_to_include):
+   - Сформируй массив из элементов ["hook", "site_observation", "approach", "ads_status", "cta", "utp"].
+   - Не вставляй блок, если он не увеличивает вероятность ответа заказчика!
+
+СТРОГИЙ СТИЛЬ JSON СО СВЕРХРАЗУМОМ (JSON Chain of Thought):
+Первым символом ответа ДОЛЖЕН быть '{'. Обязательно укажи поле "_thought" для рассуждений.
+
+Пример структуры ответа:
+{
+  "_thought": "ТЗ на украинском языке. Речь идет про GTM и GA4...",
+  "language": "uk",
+  "client_name": "Олександр",
+  "client_situation": "Налаштування GTM та GA4 для e-commerce",
+  "ads_status": "unknown",
+  "site_observation": null,
+  "proposed_approach": "Спочатку перевірю поточний GTM...",
+  "hook": "Подивився вашу задачу по налаштуванню GTM...",
+  "cta": "До речі, підкажіть, Google Ads у вас вже запущений чи плануєте з нуля?",
+  "blocks_to_include": ["hook", "approach", "ads_status", "cta", "utp"]
+}`;
+
+const FREELANCE_GENERATION_PROMPT = `Ты — топовый Senior PPC Specialist (Aurelius Ads), работающий на бирже Freelancehunt.
+Твоя задача — сгенерировать идеальный отклик (ставку) на проект на основе JSON-анализа.
+
+СТРОГИЕ ПРАВИЛА ГЕНЕРАЦИИ:
+1. ЯЗЫК: Генерируй текст СТРОГО на языке анализа ({language}):
+   - "uk" -> Украинский язык
+   - "ru" -> Русский язык
+   - "en" -> Английский язык
+   СТРОГО ЗАПРЕЩЕНО отвечать на русском, если ТЗ было на украинском!
+
+2. СТИЛЬ: Живой, экспертный, уверенный, лаконичный. Выглядит так, словно занятой Senior специалист написал его с телефона за 30 секунд. Без воды и машинного стиля.
+
+3. ЗАПРЕЩЕННЫЕ КЛИШЕ:
+   ❌ "Вижу, что вы ищете..." / "Вижу, ищете специалиста..."
+   ❌ "Понял задачу..." / "По задаче всё понятно..."
+   ❌ "Вам требуется настройка..."
+   ❌ "Частая история..."
+   ❌ "Буду рад сотрудничеству" / "Готов обсудить" / "Обращайтесь"
+   ❌ Мини-учебники и лекции по GTM/GA4/Ads.
+
+4. ПРИВЕТСТВИЕ:
+   - Если есть client_name -> Обратись по имени (UK: "Доброго дня, [client_name]!", RU: "Добрый день, [client_name]!", EN: "Hello [client_name]!").
+   - Если нет client_name -> (UK: "Доброго дня!", RU: "Добрый день!", EN: "Hello!").
+
+5. БЛОКИ:
+   Генерируй ТОЛЬКО те блоки, которые включены в blocks_to_include.
+
+6. СТАЦИОНАРНЫЙ БЛОК УТП (если utp включен в blocks_to_include):
+   Размести маркированный список в самом низу отклика:
+
+   Для UK (language = "uk"):
+   • 12 років досвіду в Google Ads
+   • Сертифікований Google Partner
+   • Працюю особисто — без агентства та акаунт-менеджерів
+   • Орієнтуюся на окупність та прибуток, а не на кількість кліків
+
+   Для RU (language = "ru"):
    • 12 лет опыта в Google Ads
    • Сертифицированный Google Partner
-   • Работаю лично (не агентство, без конвейера и аккаунт-менеджеров)
-   • Работаю на окупаемость и прибыль (ROI), а не на пустые клики
+   • Работаю лично — без агентства и аккаунт-менеджеров
+   • Ориентируюсь на окупаемость и прибыль, а не на количество кликов
 
-3. ОФФЕР ДОВЕРИЯ / СЛЕДУЮЩИЙ ШАГ (1 предложение):
-   - Предложить бесплатный экспресс-аудит текущего рекламного аккаунта / видео-разбор или набросать план структуры кампаний.
-   - НЕ предлагать переход в Telegram/мессенджеры.
+   Для EN (language = "en"):
+   • 12 years of Google Ads experience
+   • Certified Google Partner
+   • Working personally — no agency or account managers
+   • Focus on ROI and profit, not empty clicks
 
-СТРУКТУРА ОТВЕТА В ЧАТЕ (MODE B: CLIENT CHAT):
-- Короткий, естественный ответ в 2-4 строки на русском языке.
-- Если известно имя — обязательно обратиться по имени.
-- Объяснить логику, успокоить, показать экспертность через цифры и окупаемость.
+7. ВЫВОД: Выводи ТОЛЬКО готовый текст отклика. Без кавычек, префиксов и мета-пояснений.`;
 
-ПРАВИЛО ВЫВОДА:
-Выводи ТОЛЬКО готовый текст сообщения. Без вводных слов, кавычек и мета-пояснений.`;
+const FREELANCE_CHAT_PROMPT = `Ты — Senior PPC Specialist агентства Aurelius Ads.
+Отвечай на сообщение заказчика в чате биржи Freelancehunt.
+
+ПРАВИЛА:
+1. ЯЗЫК: Отвечай СТРОГО на том языке, на котором написано сообщение клиента (Украинский / Русский / Английский).
+2. ДЛИНА: Коротко, 2-4 предложения в разговорно-экспертном стиле.
+3. ОБРАЩЕНИЕ: По имени, если известно.
+4. Выводи ТОЛЬКО текст ответа.`;
 
 const freelanceSessionsMemory = new Map();
 
@@ -108,48 +177,120 @@ async function fetchSiteQuickAnalysis(url) {
     }
 }
 
-async function generateFreelancehuntResponse(promptText, mode = 'bid', siteAnalysis = null, modifier = null) {
-    let userContent = '';
-    if (mode === 'bid') {
-        userContent = `[РЕЖИМ: СТАВКА НА ПРОЕКТ FREELANCEHUNT]\n\nОПИСАНИЕ ПРОЕКТА / ТЗ:\n${promptText}\n`;
-        if (siteAnalysis && !siteAnalysis.error) {
-            userContent += `\n[РЕАЛЬНАЯ ТЕЛЕМЕТРИЯ САЙТА ЗАКАЗЧИКА (${siteAnalysis.url})]:\n` +
-                `— Title: ${siteAnalysis.title || '—'}\n` +
-                `— Description: ${siteAnalysis.desc || '—'}\n` +
-                `— H1: ${siteAnalysis.h1 || '—'}\n` +
-                `— Плавающие кнопки связи (floating CTA): ${siteAnalysis.hasFloatingButtons ? 'Да (есть)' : 'НЕТ (кнопка звонка/мессенджера не закреплена на мобилке)'}\n` +
-                `— Мессенджеры на сайте (TG/Viber/WA): ${siteAnalysis.hasMessengers ? 'Да' : 'НЕТ'}\n` +
-                `— Прямой кликабельный телефон: ${siteAnalysis.hasPhoneCall ? 'Да' : 'НЕТ'}\n` +
-                `— Форма заявки: ${siteAnalysis.hasForm ? 'Да' : 'НЕТ'}\n` +
-                `Вплети 1 точечное замечание по сайту в начало отклика.\n`;
-        } else {
-            userContent += `\n[ВАЖНО]: ССЫЛКИ НА САЙТ НЕТ! ВООБЩЕ НЕ УПОМИНАЙ САЙТ И НЕ ПИШИ "САЙТ НЕ ОТКРЫЛСЯ" ИЛИ "НА САЙТЕ БЫВАЕТ".\n`;
+function parseJsonFromLLM(text) {
+    if (!text) return null;
+    try {
+        const clean = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+        return JSON.parse(clean);
+    } catch (e) {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+            try {
+                return JSON.parse(match[0]);
+            } catch (err) {
+                return null;
+            }
         }
-    } else {
-        userContent = `[РЕЖИМ: СООБЩЕНИЕ КЛИЕНТА В ЧАТЕ FREELANCEHUNT]\n\nСООБЩЕНИЕ КЛИЕНТА:\n${promptText}\n\nСформируй естественный, живой экспертный ответ для переписки.`;
+        return null;
     }
+}
 
-    if (modifier) {
-        if (modifier === 'short') {
-            userContent += `\n\n[ДОПОЛНИТЕЛЬНАЯ ИНСТРУКЦИЯ]: Сделай текст максимально лаконичным, коротким и емким (3-4 коротких абзаца), сохранив ключевые УТП и предложение аудита.`;
-        } else if (modifier === 'audit') {
-            userContent += `\n\n[ДОПОЛНИТЕЛЬНАЯ ИНСТРУКЦИЯ]: Сделай максимальный упор на аудит сайта, конверсии, структуру и поиск точек слива бюджета.`;
-        } else if (modifier === 'casual') {
-            userContent += `\n\n[ДОПОЛНИТЕЛЬНАЯ ИНСТРУКЦИЯ]: Сделай тон еще более разговорным, дружелюбным и простым (casual expert с телефона).`;
-        } else if (modifier === 'regen') {
-            userContent += `\n\n[ДОПОЛНИТЕЛЬНАЯ ИНСТРУКЦИЯ]: Сгенерируй другой альтернативный вариант отклика с другими акцентами.`;
-        }
+async function analyzeFreelanceProject(promptText, siteAnalysis = null) {
+    let userPrompt = `[ТЗ ПРОЕКТА FREELANCEHUNT]:\n${promptText}\n`;
+    if (siteAnalysis && !siteAnalysis.error) {
+        userPrompt += `\n[ТЕЛЕМЕТРИЯ САЙТА ЗАКАЗЧИКА (${siteAnalysis.url})]:\n` +
+            `— Title: ${siteAnalysis.title || '—'}\n` +
+            `— Description: ${siteAnalysis.desc || '—'}\n` +
+            `— H1: ${siteAnalysis.h1 || '—'}\n` +
+            `— Закрепленная кнопка связи (floating CTA): ${siteAnalysis.hasFloatingButtons ? 'Есть' : 'НЕТ'}\n` +
+            `— Мессенджеры на сайте: ${siteAnalysis.hasMessengers ? 'Есть' : 'НЕТ'}\n` +
+            `— Форма заявки: ${siteAnalysis.hasForm ? 'Есть' : 'НЕТ'}\n`;
+    } else {
+        userPrompt += `\n[ИНФОРМАЦИЯ]: Ссылка на сайт отсутствует. site_observation строго null.\n`;
     }
 
     const aiRes = await callMarkLLM({
-        systemPrompt: ALPHA_FREELANCE_PROMPT,
-        userPrompt: userContent,
+        systemPrompt: FREELANCE_ANALYSIS_PROMPT,
+        userPrompt: userPrompt,
+        senderName: '',
+        temperature: 0.2,
+        maxTokens: 800
+    });
+
+    const parsed = parseJsonFromLLM(aiRes.reply);
+    if (parsed) {
+        return parsed;
+    }
+
+    // Fallback if AI JSON parsing failed
+    const isUk = /[іїєґ]/i.test(promptText);
+    return {
+        _thought: "Fallback parsing used",
+        language: isUk ? "uk" : "ru",
+        client_name: null,
+        client_situation: promptText.slice(0, 100),
+        ads_status: "unknown",
+        site_observation: null,
+        proposed_approach: isUk ? "Пропоную почати з аналізу ваших поточних кампаній та перевірки налаштувань." : "Предлагаю начать с анализа ваших текущих кампаний и проверки настроек.",
+        hook: promptText.slice(0, 150),
+        cta: isUk ? "Підкажіть, Google Ads у вас вже запущений чи плануєте з нуля?" : "Подскажите, Google Ads у вас уже запущен или планируете с нуля?",
+        blocks_to_include: ["hook", "approach", "ads_status", "cta", "utp"]
+    };
+}
+
+async function assembleFreelanceProposal(promptText, analysis, siteAnalysis = null, modifier = null) {
+    let userPrompt = `[СТРУКТУРИРОВАННЫЙ JSON АНАЛИЗ ПРОЕКТА]:\n${JSON.stringify(analysis, null, 2)}\n\n[ИСХОДНОЕ ТЗ]:\n${promptText}\n`;
+
+    if (modifier) {
+        if (modifier === 'short') {
+            userPrompt += `\n[МОДИФИКАТОР]: Сделай отклик максимально коротким и лаконичным (2-3 коротких абзаца).`;
+        } else if (modifier === 'audit') {
+            userPrompt += `\n[МОДИФИКАТОР]: Сделай упор на экспресс-аудит, конверсию и точки слива бюджета.`;
+        } else if (modifier === 'casual') {
+            userPrompt += `\n[МОДИФИКАТОР]: Сделай тон максимально разговорным, простым и дружелюбным (casual expert).`;
+        } else if (modifier === 'regen') {
+            userPrompt += `\n[МОДИФИКАТОР]: Сгенерируй другой вариант зацепки и подачи.`;
+        }
+    }
+
+    const systemPromptWithLang = FREELANCE_GENERATION_PROMPT.replace('{language}', analysis.language || 'ru');
+
+    const aiRes = await callMarkLLM({
+        systemPrompt: systemPromptWithLang,
+        userPrompt: userPrompt,
         senderName: '',
         temperature: 0.3,
         maxTokens: 1000
     });
 
     return aiRes.reply;
+}
+
+async function generateFreelancehuntResponse(promptText, mode = 'bid', siteAnalysis = null, modifier = null, session = null) {
+    if (mode === 'chat') {
+        const aiRes = await callMarkLLM({
+            systemPrompt: FREELANCE_CHAT_PROMPT,
+            userPrompt: `[СООБЩЕНИЕ КЛИЕНТА]:\n${promptText}`,
+            senderName: '',
+            temperature: 0.3,
+            maxTokens: 500
+        });
+        return aiRes.reply;
+    }
+
+    // MODE: BID (2-Stage Pipeline)
+    let analysis = session ? session.analysis : null;
+    if (!analysis || modifier === 'regen') {
+        analysis = await analyzeFreelanceProject(promptText, siteAnalysis);
+    }
+
+    const proposalText = await assembleFreelanceProposal(promptText, analysis, siteAnalysis, modifier);
+
+    if (session) {
+        session.analysis = analysis;
+    }
+
+    return proposalText;
 }
 
 function createFreelanceKeyboard(token, mode = 'bid') {
@@ -204,6 +345,8 @@ const Module_Freelancehunt = {
 
     extractUrlFromText,
     fetchSiteQuickAnalysis,
+    analyzeFreelanceProject,
+    assembleFreelanceProposal,
     generateFreelancehuntResponse,
     createFreelanceKeyboard,
     freelanceSessionsMemory

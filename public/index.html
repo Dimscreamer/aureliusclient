@@ -79,10 +79,6 @@
                 <i data-lucide="cpu" class="w-5 h-5 text-cyan-400"></i>
                 <span class="font-bold uppercase tracking-widest text-[11px]">Ares OS</span>
             </div>
-            <div id="nav-emanuel" onclick="switchView('emanuel'); toggleMobileMenu()" class="nav-link w-full flex items-center gap-3 px-6 py-4 text-gray-400 hover:text-white">
-                <i data-lucide="flame" class="w-5 h-5 text-rose-500"></i>
-                <span class="font-bold uppercase tracking-widest text-[11px]">Emanuel OS</span>
-            </div>
         </nav>
 
         <div class="p-4 border-t border-white/5">
@@ -223,7 +219,7 @@
                     </div>
 
                     <!-- Row: Actions -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
                         <!-- Test TG -->
                         <div class="glass rounded-3xl p-6 border border-white/5 flex flex-col gap-4">
@@ -280,6 +276,25 @@
                             </button>
                         </div>
 
+                        <!-- Test Weekly Ads Report to Admin PM -->
+                        <div class="glass rounded-3xl p-6 border border-white/5 flex flex-col gap-4">
+                            <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest">
+                                <i data-lucide="image" class="w-4 h-4 text-purple-400"></i> Тест графики Ads (в ЛС)
+                            </div>
+                            <p class="text-gray-500 text-[11px] leading-relaxed">Генерирует сводку Live Analytics и отправляет ботом прямо вам в личные сообщения Telegram.</p>
+                            
+                            <div class="space-y-1.5 mt-auto">
+                                <label class="text-[9px] text-gray-400 uppercase font-bold tracking-wider block">Проект для теста:</label>
+                                <select id="diag-ads-client-select" class="w-full bg-black/60 border border-white/10 rounded-xl px-3 py-2 text-white text-[11px] focus:outline-none focus:border-purple-500 transition-colors">
+                                    <option value="">Авто (первый с Ads)</option>
+                                </select>
+                            </div>
+
+                            <button id="diag-ads-report-btn" onclick="diagTestWeeklyAdsReport()" class="w-full py-3 bg-purple-600/20 text-purple-400 border border-purple-600/40 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-purple-600 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2">
+                                <i data-lucide="send" class="w-3.5 h-3.5 inline mr-1"></i> Отправить в ЛС
+                            </button>
+                        </div>
+
                     </div>
 
                     <!-- Activity Logs -->
@@ -330,357 +345,344 @@
                 </div>
             </div>
 
-            <div id="details-view" class="view-section p-4 md:p-10">
-                <div id="details-container" class="max-w-6xl mx-auto">
-                    <div class="flex items-center justify-between mb-8">
-                        <div class="flex items-center gap-4">
-                            <button onclick="switchView('clients')" class="flex items-center gap-2 text-gray-500 hover:text-white font-bold uppercase text-[9px] tracking-widest transition-colors">
-                                <i data-lucide="chevron-left" class="w-4 h-4"></i> Назад [Esc]
-                            </button>
-                            <div class="flex items-center gap-2 px-2 border-l border-white/10 ml-2">
-                                <button onclick="navigateClient(-1)" class="nav-btn"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-                                <button onclick="navigateClient(1)" class="nav-btn"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
-                            </div>
-                            <div id="autosave-indicator" class="flex items-center gap-2 text-green-400 font-bold uppercase text-[9px] tracking-widest">
-                                <i data-lucide="check" class="w-3 h-3"></i> Сохранено
-                            </div>
+            <div id="details-view" class="view-section p-3 md:p-6 lg:p-8">
+            <div id="details-container" class="w-full max-w-[1920px] mx-auto flex flex-col gap-4 pb-20">
+
+                <!-- ============ ROW 0: NAV STRIP ============ -->
+                <div class="flex items-center justify-between flex-wrap gap-2 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <button onclick="switchView('clients')" class="h-9 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-bold uppercase text-xs tracking-wider transition-all flex items-center gap-1.5 border border-white/10">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i> Назад
+                        </button>
+                        <div class="flex items-center gap-1 bg-black/40 p-0.5 rounded-xl border border-white/10">
+                            <button onclick="navigateClient(-1)" title="Предыдущий клиент" class="w-8 h-8 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                            <button onclick="navigateClient(1)" title="Следующий клиент" class="w-8 h-8 rounded-lg hover:bg-white/10 text-gray-300 hover:text-white flex items-center justify-center"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                         </div>
-                        <div class="flex flex-col items-end gap-1">
-                            <div id="next-payment-display" class="text-cyan-400 font-extrabold text-[10px] uppercase tracking-[0.2em] mb-1">
-                                След. платеж: --
-                            </div>
-                            <div id="payment-countdown" class="px-6 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-widest">
-                                Статус: --
+                        <div id="autosave-indicator" class="flex items-center gap-1.5 text-emerald-400 font-bold uppercase text-xs tracking-wider pl-1">
+                            <i data-lucide="check" class="w-3.5 h-3.5"></i> Сохранено
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div id="next-payment-display" class="text-cyan-400 font-extrabold text-sm uppercase tracking-wider font-mono">След. платеж: --</div>
+                        <div id="payment-countdown" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider border border-white/10">Статус: --</div>
+                    </div>
+                </div>
+
+                <!-- ============ ROW 1: CLIENT STRIP (profile + finance + actions) ============ -->
+                <div id="profile-card-container" class="bento shrink-0 !flex-row flex-wrap xl:flex-nowrap items-center gap-x-5 gap-y-3 !py-3">
+                    <div class="flex items-center gap-3 min-w-[260px] flex-1">
+                        <div class="relative w-14 h-14 shrink-0 group/img">
+                            <img id="detail-img" src="" class="w-full h-full rounded-2xl border-2 border-white/20 object-cover aspect-square shadow-xl">
+                            <button onclick="document.getElementById('photo-upload').click()" class="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 bg-black/60 rounded-2xl transition-opacity"><i data-lucide="camera" class="w-5 h-5 text-white"></i></button>
+                            <input type="file" id="photo-upload" class="hidden" accept="image/*" onchange="handlePhotoUpload(this)">
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <input type="text" id="detail-name-input" onblur="saveProfileChanges()" class="w-full font-black text-xl bg-transparent border-none text-white focus:ring-0 p-0 truncate leading-tight" placeholder="Имя клиента">
+                            <input type="text" id="detail-role-input" onblur="saveProfileChanges()" class="w-full text-gray-400 font-bold uppercase tracking-[0.12em] text-xs bg-transparent border-none focus:ring-0 p-0" placeholder="Роль / Направление">
+                            <div class="flex items-center gap-2 pt-1 flex-nowrap">
+                                <select id="detail-status-select" onchange="handleStatusChange(this.value)" class="!py-1 !px-2.5 !text-xs font-black uppercase tracking-wider rounded-xl cursor-pointer !bg-black/50 border border-white/10 text-white">
+                                    <option value="Активен">Активен</option>
+                                    <option value="Пауза">На паузе</option>
+                                    <option value="Ожидание">Ожидание</option>
+                                </select>
+                                <select id="detail-cohort-select" onchange="handleCohortOverride(this.value)" class="!py-1 !px-2.5 !text-xs font-extrabold uppercase tracking-wider rounded-xl cursor-pointer !bg-black/40 border border-white/10 text-gray-300">
+                                    <option value="auto">Авто-когорта</option>
+                                    <option value="new">Новый</option>
+                                    <option value="loyal">Лояльный</option>
+                                    <option value="problematic">Проблемный</option>
+                                    <option value="vip">VIP (High-margin)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-20">
-                        <div class="lg:col-span-4 space-y-6">
-                            <div id="profile-card-container" class="glass rounded-[2.5rem] p-8 text-center relative overflow-hidden transition-all duration-500 border-2">
-                                <div class="relative w-28 h-28 mx-auto mb-6 group/img">
-                                    <img id="detail-img" src="" class="w-full h-full rounded-full border-2 border-white/20 object-cover aspect-square shadow-xl">
-                                    <button onclick="document.getElementById('photo-upload').click()" class="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 bg-black/50 rounded-full transition-opacity">
-                                        <i data-lucide="camera" class="w-6 h-6 text-white"></i>
-                                    </button>
-                                    <input type="file" id="photo-upload" class="hidden" accept="image/*" onchange="handlePhotoUpload(this)">
-                                </div>
-                                <div class="flex flex-col gap-1 mb-6">
-                                    <input type="text" id="detail-name-input" onblur="saveProfileChanges()" class="w-full text-center font-bold text-xl py-1 bg-transparent border-none text-white focus:ring-0" placeholder="Имя">
-                                    <input type="text" id="detail-role-input" onblur="saveProfileChanges()" class="w-full text-center text-gray-400 font-bold uppercase tracking-[0.2em] text-[10px] bg-transparent border-none focus:ring-0" placeholder="Роль / Должность">
-                                </div>
-                                <div class="space-y-3 relative z-10">
-                                    <select id="detail-status-select" onchange="handleStatusChange(this.value)" class="w-full !py-2 !px-4 !text-[10px] font-extrabold uppercase tracking-widest rounded-full cursor-pointer !bg-black/40">
-                                        <option value="Активен">Активен</option>
-                                        <option value="Пауза">На паузе</option>
-                                        <option value="Ожидание">Ожидание</option>
-                                    </select>
-                                    <select id="detail-cohort-select" onchange="handleCohortOverride(this.value)" class="w-full !py-2 !px-4 !text-[10px] font-extrabold uppercase tracking-widest rounded-full cursor-pointer !bg-black/20 border-white/5">
-                                        <option value="auto">Авто-когорта</option>
-                                        <option value="new">Новый</option>
-                                        <option value="loyal">Лояльный</option>
-                                        <option value="problematic">Проблемный</option>
-                                        <option value="vip">VIP (High-margin)</option>
-                                    </select>
+                    <div class="flex items-stretch gap-3 bg-black/40 px-4 py-2 rounded-2xl border border-white/10 shrink-0">
+                        <div>
+                            <span class="field-label">Сумма / месяц</span>
+                            <div class="flex items-center gap-1">
+                                <span class="text-white text-2xl font-black font-mono">$</span>
+                                <input type="number" id="field-amount" onblur="saveProfileChanges()" placeholder="0.00" class="!bg-transparent !border-none !p-0 text-white text-2xl font-black font-mono w-24 focus:ring-0">
+                            </div>
+                        </div>
+                        <div class="border-l border-white/10 pl-4">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="field-label">Дата платежа</span>
+                                <div id="recurring-toggle" onclick="toggleRecurring()" title="Ежемесячно" class="toggle-switch scale-75 origin-right"></div>
+                            </div>
+                            <input type="date" id="field-date" onblur="saveProfileChanges()" class="!bg-transparent !border-none !p-0 text-cyan-400 text-lg font-mono font-bold focus:ring-0">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="confirmPayment()" class="h-10 px-3.5 bg-white hover:bg-gray-200 text-black font-black rounded-xl text-xs uppercase tracking-wider shadow-lg active:scale-95 transition-all flex items-center gap-1.5"><i data-lucide="check-circle" class="w-4 h-4"></i> Оплата</button>
+                        <button id="manual-invoice-btn" onclick="sendManualInvoice()" class="h-10 px-3.5 bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-cyan-600 hover:text-white transition-all flex items-center gap-1.5 active:scale-95"><i data-lucide="receipt" class="w-4 h-4"></i> Инвойс TG</button>
+                        <button onclick="openWorkspace()" class="h-10 px-3.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded-xl text-xs font-extrabold uppercase tracking-wider hover:bg-cyan-500 hover:text-black transition-all flex items-center gap-1.5 active:scale-95"><i data-lucide="external-link" class="w-4 h-4"></i> Ссылки</button>
+                    </div>
+                </div>
+
+                <!-- ============ ROW 2: GOOGLE ADS LIVE ANALYTICS (FULL WIDTH) ============ -->
+                <div id="ads-dashboard-export" class="w-full shrink-0">
+                    <div class="bento w-full !gap-3 border-cyan-500/20 bg-cyan-950/10">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30 text-cyan-400 shrink-0"><i data-lucide="bar-chart-2" class="w-5 h-5"></i></div>
+                                <div>
+                                    <h3 class="text-white font-black text-sm uppercase tracking-wider flex items-center gap-2">
+                                        Google Ads
+                                        <span id="ads-sync-badge" class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-500/20 text-cyan-400 font-extrabold uppercase border border-cyan-500/30">Online</span>
+                                    </h3>
+                                    <span id="ads-last-sync-text" class="text-xs text-gray-400 font-mono">Синхронизация: —</span>
                                 </div>
                             </div>
-
-                            <div class="glass rounded-[2rem] p-8 border-white/5">
-                                <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
-                                    <i data-lucide="banknote" class="w-4 h-4 text-cyan-400"></i> Финансы
+                            <div class="flex flex-wrap items-center gap-2">
+                                <div class="flex items-center gap-1 p-1 bg-black/40 rounded-xl border border-white/10" id="ads-period-selector">
+                                    <button onclick="switchAdsPeriod('TODAY')" id="btn-period-TODAY" class="px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider text-gray-400 hover:text-white transition-all">Сегодня</button>
+                                    <button onclick="switchAdsPeriod('YESTERDAY')" id="btn-period-YESTERDAY" class="px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider text-gray-400 hover:text-white transition-all">Вчера</button>
+                                    <button onclick="switchAdsPeriod('LAST_7_DAYS')" id="btn-period-LAST_7_DAYS" class="px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider text-gray-400 hover:text-white transition-all">7 дней</button>
+                                    <button onclick="switchAdsPeriod('LAST_30_DAYS')" id="btn-period-LAST_30_DAYS" class="px-3 py-1.5 rounded-lg text-xs font-extrabold uppercase tracking-wider text-black bg-cyan-400 font-black transition-all">30 дней</button>
                                 </div>
-                                <div class="flex flex-col gap-4">
-                                    <div class="flex flex-col gap-1.5">
-                                        <label class="text-[9px] text-gray-500 uppercase font-bold tracking-widest ml-1">Сумма ($)</label>
-                                        <input type="number" id="field-amount" onblur="saveProfileChanges()" placeholder="0.00" class="w-full">
-                                    </div>
-                                    <div class="flex flex-col gap-1.5">
-                                        <div class="flex justify-between items-center ml-1 mb-1">
-                                            <label class="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Дата платежа</label>
-                                            <div class="flex items-center gap-2">
-                                                <span class="text-[8px] uppercase font-bold text-gray-500 tracking-wider">Ежемесячно</span>
-                                                <div id="recurring-toggle" onclick="toggleRecurring()" class="toggle-switch"></div>
-                                            </div>
-                                        </div>
-                                        <input type="date" id="field-date" onblur="saveProfileChanges()" class="w-full">
-                                    </div>
-                                    <button onclick="confirmPayment()" class="w-full py-4 bg-white text-black font-extrabold rounded-xl text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-transform">
-                                        Оплата получена
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="glass rounded-[2rem] p-5 md:p-8 h-[300px] flex flex-col border-white/5">
-                                <div class="text-gray-500 font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-4">
-                                    <i data-lucide="history" class="w-4 h-4"></i> Лог событий
-                                </div>
-                                <div id="history-log" class="flex-1 overflow-y-auto custom-scrollbar space-y-1"></div>
-                            </div>
-
-                            <div class="glass rounded-[2rem] p-5 md:p-8 h-[380px] flex flex-col border-white/5 relative">
-                                <div class="flex items-center justify-between mb-4">
-                                    <div class="text-cyan-400 font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest">
-                                        <i data-lucide="messages-square" class="w-4 h-4"></i> Чат Telegram (90 дней)
-                                    </div>
-                                    <span id="chat-messages-count" class="px-2 py-0.5 rounded-full text-[8px] bg-cyan-500/10 text-cyan-400 font-bold font-mono border border-cyan-500/20">0 сообщ.</span>
-                                </div>
-                                <div id="client-chat-history" class="flex-1 overflow-y-auto custom-scrollbar space-y-2.5 pr-1">
-                                    <p class="text-gray-600 text-[10px] uppercase text-center py-10">Нет сообщений</p>
-                                </div>
+                                <button onclick="exportDashboardToChat()" id="export-dash-btn" title="Отправить дашборд в чат клиента" class="h-9 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-1.5"><i data-lucide="send" class="w-3.5 h-3.5"></i> В чат</button>
+                                <button onclick="testCurrentClientWeeklyReportToAdmin()" id="test-dash-pm-btn" title="Отправить дашборд в ЛС" class="h-9 px-3 rounded-xl text-xs font-extrabold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500 hover:text-white transition-all flex items-center gap-1.5"><i data-lucide="user-check" class="w-3.5 h-3.5"></i> В ЛС</button>
                             </div>
                         </div>
 
-                        <div class="lg:col-span-8 space-y-6">
-                            <div class="glass rounded-[2rem] p-5 md:p-8 border-white/5">
-                                <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest mb-6">
-                                    <i data-lucide="terminal" class="w-4 h-4 text-cyan-400"></i> Рабочая область
-                                </div>
-                                
-                                <div class="flex flex-col gap-2 p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-2xl mb-6">
-                                                                        <div class="flex gap-2">
-                                        <input type="text" id="field-ads-id" onblur="saveProfileChanges()" placeholder="XXX-XXX-XXXX" class="flex-1 !bg-black/20 !border-cyan-500/30 text-cyan-400 font-bold tracking-wider">
-                                        <div class="w-10 flex items-center justify-center text-cyan-400 opacity-50"><i data-lucide="hash" class="w-4 h-4"></i></div>
-                                    </div>
-                                </div>
+                        <!-- hidden watermark kept for compatibility -->
+                        <div id="export-watermark" class="hidden"><span id="export-client-name"></span><span id="export-period-name"></span></div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    <div class="flex gap-2">
-                                        <input type="text" id="link-ads" onblur="saveProfileChanges()" placeholder="Google Ads" class="flex-1 url-input">
-                                        <button onclick="openLink('ads')" class="w-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i></button>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <input type="text" id="link-ga" onblur="saveProfileChanges()" placeholder="Analytics" class="flex-1 url-input">
-                                        <button onclick="openLink('ga')" class="w-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i></button>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <input type="text" id="link-gtm" onblur="saveProfileChanges()" placeholder="GTM ID" class="flex-1 url-input">
-                                        <button onclick="openLink('gtm')" class="w-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i></button>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <input type="text" id="link-site" onblur="saveProfileChanges()" placeholder="Сайт проекта" class="flex-1 url-input">
-                                        <button onclick="openLink('site')" class="w-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i></button>
-                                    </div>
-                                </div>
-                                <button onclick="openWorkspace()" class="w-full py-4 bg-cyan-500 text-black rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all">Открыть всё</button>
-                                
-                                <button id="test-tg-btn" onclick="testTelegram()" class="w-full mt-2 py-3 bg-blue-600/20 text-blue-400 border border-blue-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">
-                                    <i data-lucide="send" class="w-3 h-3 inline mr-2"></i> Тест Telegram
-                                </button>
-
-                                <button id="manual-invoice-btn" onclick="sendManualInvoice()" class="w-full mt-2 py-3 bg-cyan-600/20 text-cyan-400 border border-cyan-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-600 hover:text-white transition-all">
-                                    <i data-lucide="receipt" class="w-3 h-3 inline mr-2"></i> Отправить счет (Telegram)
-                                </button>
-
-                                <button id="connect-tg-chat-btn" onclick="connectTelegramGroup()" class="w-full mt-2 py-3 bg-gradient-to-r from-blue-600/20 to-cyan-500/20 text-cyan-300 border border-cyan-500/40 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:from-blue-600 hover:to-cyan-500 hover:text-black transition-all shadow-[0_0_15px_rgba(6,182,212,0.1)] flex items-center justify-center gap-2">
-                                    <i data-lucide="message-square-plus" class="w-3.5 h-3.5 inline mr-1 text-cyan-400"></i> Подключить чат (1-Click)
-                                </button>
+                        <!-- PRIMARY KPIs (6 columns on desktop) -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" id="ads-kpi-grid">
+                            <div class="kpi">
+                                <span class="kpi-label">Расход</span>
+                                <span id="ads-kpi-cost" class="kpi-value text-cyan-400">--</span>
+                                <div id="ads-kpi-cost-trend" class="min-h-[18px] mt-0.5"></div>
                             </div>
-
-                            <!-- 📊 GOOGLE ADS LIVE & TIME-SERIES ANALYTICS (v4.0) -->
-                            <div id="ads-dashboard-export" class="glass rounded-[2rem] p-5 md:p-8 border-white/5 border border-cyan-500/20 bg-cyan-950/10 space-y-6 relative">
-
-<!-- WATERMARK FOR EXPORT (HIDDEN BY DEFAULT) -->
-<div id="export-watermark" class="hidden w-full flex items-center justify-between pb-6 mb-6 border-b border-cyan-500/20">
-    <div class="flex items-center gap-4">
-        <div class="w-14 h-14 shrink-0 rounded-xl bg-transparent flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.3)]">
-            <img src="/favicon-96x96.png" class="w-full h-full object-cover rounded-xl border border-cyan-500/50" alt="Aurelius Logo">
-        </div>
-        <div class="flex flex-col justify-center pt-1">
-            <h2 class="text-white font-black tracking-widest text-2xl uppercase leading-none mb-1">AURELIUS<span class="text-cyan-400">MARKETING</span>AI</h2>
-            <p class="text-cyan-500 text-[10px] font-mono uppercase tracking-widest leading-none">Performance Dashboard</p>
-        </div>
-    </div>
-    <div class="text-right">
-        <h3 id="export-client-name" class="text-white font-bold text-sm uppercase tracking-wider">CLIENT NAME</h3>
-        <p id="export-period-name" class="text-gray-400 text-[10px] uppercase font-mono">PERIOD</p>
-    </div>
-</div>
-
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30 text-cyan-400">
-                                            <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
-                                                Google Ads Live Analytics
-                                                <span id="ads-sync-badge" class="px-2 py-0.5 rounded-full text-[8px] bg-cyan-500/20 text-cyan-400 font-extrabold uppercase border border-cyan-500/30">Online</span>
-                                            </h3>
-                                            <span id="ads-last-sync-text" class="text-[9px] text-gray-400 font-mono">Синхронизация: —</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-1.5 p-1 bg-black/40 rounded-xl border border-white/10 overflow-x-auto no-scrollbar" id="ads-period-selector">
-                                        <button onclick="switchAdsPeriod('TODAY')" id="btn-period-TODAY" class="px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-white transition-all">Сегодня</button>
-                                        <button onclick="switchAdsPeriod('YESTERDAY')" id="btn-period-YESTERDAY" class="px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-white transition-all">Вчера</button>
-                                        <button onclick="switchAdsPeriod('LAST_7_DAYS')" id="btn-period-LAST_7_DAYS" class="px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest text-gray-400 hover:text-white transition-all">7 дней</button>
-                                        <button onclick="switchAdsPeriod('LAST_30_DAYS')" id="btn-period-LAST_30_DAYS" class="px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest text-black bg-cyan-400 font-black transition-all">30 дней</button>
-                                        <button onclick="exportDashboardToChat()" id="export-dash-btn" class="px-3 py-1.5 rounded-lg text-[9px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-black transition-all flex items-center gap-1 ml-2">
-                                            <i data-lucide="send" class="w-3 h-3"></i> В чат
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Метрики KPI -->
-                                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" id="ads-kpi-grid">
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Клики</span>
-                                          <span id="ads-kpi-clicks" class="text-lg font-black text-white font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Расход</span>
-                                          <span id="ads-kpi-cost" class="text-lg font-black text-cyan-400 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Конверсии</span>
-                                          <span id="ads-kpi-convs" class="text-lg font-black text-emerald-400 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">CPA</span>
-                                          <span id="ads-kpi-cpa" class="text-lg font-black text-purple-400 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">ROAS</span>
-                                          <span id="ads-kpi-roas" class="text-lg font-black text-yellow-400 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">AOV (Ср.чек)</span>
-                                          <span id="ads-kpi-aov" class="text-lg font-black text-amber-500 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">CTR</span>
-                                          <span id="ads-kpi-ctr" class="text-lg font-black text-blue-400 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Conv. Rate</span>
-                                          <span id="ads-kpi-cr" class="text-lg font-black text-emerald-300 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">CPC</span>
-                                          <span id="ads-kpi-cpc" class="text-lg font-black text-gray-400 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Search IS</span>
-                                          <span id="ads-kpi-search-is" class="text-lg font-black text-cyan-300 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Lost IS (Budget)</span>
-                                          <span id="ads-kpi-lost-is-budget" class="text-lg font-black text-orange-400 font-mono">--</span>
-                                      </div>
-                                      <div class="bg-black/40 p-3 rounded-2xl border border-white/5">
-                                          <span class="text-[8px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Lost IS (Rank)</span>
-                                          <span id="ads-kpi-lost-is-rank" class="text-lg font-black text-red-400 font-mono">--</span>
-                                      </div>
-                                  </div>
-
-                                  <!-- Раздел: Кампании и Цели -->
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <!-- Список Кампаний -->
-                                    <div class="bg-black/40 p-4 rounded-2xl border border-white/5 space-y-3">
-                                        <div class="text-white font-bold flex items-center gap-2 uppercase text-[9px] tracking-widest">
-                                            <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i> Кампании (<span id="ads-camp-count">0</span>)
-                                        </div>
-                                        <div id="ads-campaigns-list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-                                            <p class="text-gray-600 text-[10px] uppercase text-center py-4">Нет данных</p>
-                                        </div>
-                                    </div>
-
-                                    <!-- Цели конверсий -->
-                                    <div class="bg-black/40 p-4 rounded-2xl border border-white/5 space-y-3">
-                                        <div class="text-white font-bold flex items-center gap-2 uppercase text-[9px] tracking-widest">
-                                            <i data-lucide="target" class="w-3.5 h-3.5 text-emerald-400"></i> Цели Конверсий (<span id="ads-conv-count">0</span>)
-                                        </div>
-                                        <div id="ads-conversions-list" class="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-                                            <p class="text-gray-600 text-[10px] uppercase text-center py-4">Нет данных</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Поисковые запросы -->
-                                <div class="bg-black/40 p-4 rounded-2xl border border-white/5 space-y-3">
-                                    <div class="text-white font-bold flex items-center gap-2 uppercase text-[9px] tracking-widest">
-                                        <i data-lucide="search" class="w-3.5 h-3.5 text-purple-400"></i> Реальные поисковые запросы (с конверсиями)
-                                    </div>
-                                    <div id="ads-queries-list" class="space-y-1.5 max-h-44 overflow-y-auto custom-scrollbar">
-                                        <p class="text-gray-600 text-[10px] uppercase text-center py-4">Нет данных</p>
-                                    </div>
-                                </div>
+                            <div class="kpi">
+                                <span class="kpi-label">Конверсии</span>
+                                <span id="ads-kpi-convs" class="kpi-value text-emerald-400">--</span>
+                                <div id="ads-kpi-convs-trend" class="min-h-[18px] mt-0.5"></div>
                             </div>
-
-                            <!-- 📈 ГЛУБОКАЯ АНАЛИТИКА И ТРЕНДЫ (ПО МЕСЯЦАМ) -->
-                            <div class="glass rounded-[2rem] p-5 md:p-8 border-white/5 border border-purple-500/20 bg-purple-950/10 space-y-6">
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/30 text-purple-400">
-                                            <i data-lucide="trending-up" class="w-5 h-5"></i>
-                                        </div>
-                                        <div>
-                                            <h3 class="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
-                                                Исторические Тренды (По Месяцам)
-                                            </h3>
-                                            <span class="text-[9px] text-gray-400 font-mono">Глубокий архив для Марка</span>
-                                        </div>
-                                    </div>
+                            <div class="kpi">
+                                <span class="kpi-label">CPA</span>
+                                <span id="ads-kpi-cpa" class="kpi-value text-purple-400">--</span>
+                                <div id="ads-kpi-cpa-trend" class="min-h-[18px] mt-0.5"></div>
+                            </div>
+                            <div class="kpi">
+                                <span class="kpi-label">ROAS</span>
+                                <span id="ads-kpi-roas" class="kpi-value text-yellow-400">--</span>
+                                <div id="ads-kpi-roas-trend" class="min-h-[18px] mt-0.5"></div>
+                            </div>
+                            <div class="kpi">
+                                <span class="kpi-label">Клики</span>
+                                <span id="ads-kpi-clicks" class="kpi-value text-white">--</span>
+                                <div id="ads-kpi-clicks-trend" class="min-h-[18px] mt-0.5"></div>
+                            </div>
+                            <div class="kpi">
+                                <span class="kpi-label">CTR</span>
+                                <span id="ads-kpi-ctr" class="kpi-value text-blue-400">--</span>
+                                <div id="ads-kpi-ctr-trend" class="min-h-[18px] mt-0.5"></div>
+                            </div>
+                        </div>
+                        <!-- SECONDARY KPIs (6 columns on desktop) -->
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div class="kpi kpi-sm flex-col !items-start !justify-center">
+                                <div class="flex items-baseline justify-between w-full">
+                                    <span class="kpi-label" title="Средний чек (AOV)">AOV</span>
+                                    <span id="ads-kpi-aov" class="kpi-value text-amber-400">--</span>
                                 </div>
+                                <div id="ads-kpi-aov-trend" class="min-h-[14px]"></div>
+                            </div>
+                            <div class="kpi kpi-sm flex-col !items-start !justify-center">
+                                <div class="flex items-baseline justify-between w-full">
+                                    <span class="kpi-label" title="Conversion Rate">CR</span>
+                                    <span id="ads-kpi-cr" class="kpi-value text-emerald-300">--</span>
+                                </div>
+                                <div id="ads-kpi-cr-trend" class="min-h-[14px]"></div>
+                            </div>
+                            <div class="kpi kpi-sm flex-col !items-start !justify-center">
+                                <div class="flex items-baseline justify-between w-full">
+                                    <span class="kpi-label" title="Цена клика (CPC)">CPC</span>
+                                    <span id="ads-kpi-cpc" class="kpi-value text-gray-300">--</span>
+                                </div>
+                                <div id="ads-kpi-cpc-trend" class="min-h-[14px]"></div>
+                            </div>
+                            <div class="kpi kpi-sm flex-col !items-start !justify-center">
+                                <div class="flex items-baseline justify-between w-full">
+                                    <span class="kpi-label" title="Доля показов в поиске (Search Impression Share)">IS</span>
+                                    <span id="ads-kpi-search-is" class="kpi-value text-cyan-300">--</span>
+                                </div>
+                                <div id="ads-kpi-search-is-trend" class="min-h-[14px]"></div>
+                            </div>
+                            <div class="kpi kpi-sm"><span class="kpi-label" title="Потеряно показов из-за бюджета">Lost B</span><span id="ads-kpi-lost-is-budget" class="kpi-value text-orange-400">--</span></div>
+                            <div class="kpi kpi-sm"><span class="kpi-label" title="Потеряно показов из-за рейтинга">Lost R</span><span id="ads-kpi-lost-is-rank" class="kpi-value text-red-400">--</span></div>
+                        </div>
+                    </div>
+                </div>
 
-
-                                <!-- График трендов -->
-                                <div class="h-[200px] w-full relative bg-black/20 rounded-2xl p-2 border border-white/5 hidden" id="monthly-chart-container">
+                <!-- ============ ROW 2.5: MONTHLY TRENDS (DEDICATED FULL WIDTH BLOCK) ============ -->
+                <div class="w-full shrink-0">
+                    <div class="bento w-full !gap-4 border-purple-500/20 bg-purple-950/10">
+                        <div class="flex items-center justify-between pb-2 border-b border-white/5">
+                            <div class="bento-title text-purple-300">
+                                <i data-lucide="trending-up" class="w-5 h-5 text-purple-400"></i> Тренды по месяцам
+                            </div>
+                            <div class="text-xs font-mono text-gray-400 uppercase tracking-wider">
+                                Динамика конверсий, CPA и расходов
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-stretch">
+                            <!-- Large spacious chart -->
+                            <div class="xl:col-span-8 bg-black/40 rounded-2xl p-4 border border-white/5 flex flex-col justify-between">
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center justify-between">
+                                    <span>График конверсий и стоимости цели (CPA)</span>
+                                    <span class="text-[10px] text-purple-400 font-mono">Chart.js Live</span>
+                                </div>
+                                <div class="relative h-[240px] w-full" id="monthly-chart-container">
                                     <canvas id="monthly-trend-chart"></canvas>
                                 </div>
-
-                                <!-- Таблица месяцев -->
-                                <div class="bg-black/40 p-4 rounded-2xl border border-white/5 space-y-3">
-                                    <div class="text-white font-bold flex items-center gap-2 uppercase text-[9px] tracking-widest">
-                                        <i data-lucide="calendar-days" class="w-3.5 h-3.5 text-purple-400"></i> Сводка по месяцам
-                                    </div>
-                                    <div id="monthly-history-list" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
-                                        <p class="text-gray-600 text-[10px] uppercase text-center py-4" id="monthly-history-empty">Нет данных. Загрузите CSV с историей.</p>
-                                    </div>
-                                </div>
                             </div>
 
-
-                            <div class="glass rounded-[2rem] p-5 md:p-8 border-white/5">
-                                <div class="flex justify-between items-center mb-6">
-                                    <div class="text-white font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest">
-                                        <i data-lucide="shopping-bag" class="w-4 h-4 text-cyan-400"></i> Дополнительные услуги
-                                    </div>
-                                    <button onclick="addExtraService()" class="text-cyan-400 hover:text-white transition-colors"><i data-lucide="plus-circle" class="w-5 h-5"></i></button>
+                            <!-- Detailed monthly summary cards -->
+                            <div class="xl:col-span-4 flex flex-col justify-between">
+                                <div class="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+                                    История по месяцам
                                 </div>
-                                <div id="extra-services-list" class="space-y-2 mb-4"></div>
-                                <div id="extra-invoice-container" class="hidden mt-4 pt-4 border-t border-white/5 space-y-2">
-                                     <button id="extra-invoice-btn" onclick="sendExtraInvoice()" class="w-full py-3 bg-indigo-600/20 text-indigo-400 border border-indigo-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">
-                                        <i data-lucide="receipt" class="w-3 h-3 inline mr-2"></i> Счет на доп. услуги
-                                     </button>
-                                     <button onclick="confirmExtraPayment()" class="w-full py-3 bg-green-600/20 text-green-400 border border-green-600/50 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-green-600 hover:text-white transition-all">
-                                        <i data-lucide="check-circle" class="w-3 h-3 inline mr-2"></i> Оплата получена
-                                     </button>
+                                <div id="monthly-history-list" class="space-y-2 overflow-y-auto custom-scrollbar max-h-[240px] pr-1">
+                                    <p class="text-gray-500 text-xs uppercase text-center py-10" id="monthly-history-empty">Нет данных</p>
                                 </div>
-                                <div id="add-service-form" class="hidden grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-white/5 rounded-2xl border border-white/5 mt-4">
-                                    <input type="text" id="new-service-name" placeholder="Название" class="text-xs">
-                                    <input type="number" id="new-service-amount" placeholder="Цена ($)" class="text-xs">
-                                    <button onclick="confirmAddService()" class="bg-cyan-500 text-black font-bold rounded-xl text-[10px] uppercase h-10">Добавить</button>
-                                </div>
-                            </div>
-
-                            <div class="glass rounded-[2rem] p-8 min-h-[300px] flex flex-col relative overflow-hidden border-white/5">
-                                <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                                    <div class="text-cyan-400 font-bold flex items-center gap-2 uppercase text-[10px] tracking-widest">
-                                        <i data-lucide="brain-circuit" class="w-5 h-5 animate-pulse"></i> Характеристика клиента (Психотип)
-                                    </div>
-                                    <button id="generate-psychotype-btn" onclick="generateClientPsychotype()" class="px-3 py-1.5 bg-gradient-to-r from-purple-600/30 to-cyan-500/30 hover:from-purple-600/50 hover:to-cyan-500/50 text-cyan-300 border border-cyan-500/40 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.15)] active:scale-95">
-                                        <i data-lucide="sparkles" class="w-3 h-3 text-cyan-400"></i> ИИ-Анализ из чата (Марк)
-                                    </button>
-                                </div>
-                                <textarea 
-                                    id="detail-ai-analysis" 
-                                    onblur="saveProfileChanges()" 
-                                    class="w-full h-64 bg-transparent border-none focus:ring-0 text-gray-300 text-sm leading-relaxed p-0 resize-none custom-scrollbar" 
-                                    placeholder="Введите характеристику клиента, стратегию общения и психотип здесь..."></textarea>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <!-- ============ ROW 3: MARK AI OPERATIONAL HUB (FULL WIDTH) ============ -->
+                <div class="w-full shrink-0">
+                    <div class="bento w-full !gap-4 border-cyan-500/20 bg-gradient-to-b from-cyan-950/15 via-black/40 to-black/60 shadow-[0_0_30px_rgba(6,182,212,0.05)]">
+                        <div class="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-white/10 shrink-0">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center border border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
+                                <div>
+                                    <h4 class="text-white font-black text-base uppercase tracking-wider flex items-center gap-2.5">
+                                        Штаб-квартира · Марк AI
+                                        <span id="ai-summary-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] bg-cyan-500/20 text-cyan-300 font-extrabold uppercase border border-cyan-500/30">Синхронизировано</span>
+                                    </h4>
+                                    <span class="text-xs text-gray-400 font-medium">Интеллектуальный анализ договоренностей, рекламных гипотез и коммуникации с клиентом</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2.5">
+                                <div class="bg-black/60 p-1 rounded-xl border border-white/10 flex items-center gap-1 text-xs font-bold">
+                                    <button type="button" id="ai-view-dashboard-btn" onclick="toggleAiSummaryView('dashboard')" class="px-3.5 py-1.5 rounded-lg bg-cyan-500 text-black font-extrabold transition-all"><i data-lucide="layout-grid" class="w-3.5 h-3.5 inline mr-1"></i> Дашборд</button>
+                                    <button type="button" id="ai-view-raw-btn" onclick="toggleAiSummaryView('raw')" class="px-3.5 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all"><i data-lucide="edit-3" class="w-3.5 h-3.5 inline mr-1"></i> Текст</button>
+                                </div>
+                                <button id="generate-psychotype-btn" onclick="generateClientPsychotype()" class="h-10 px-4 bg-gradient-to-r from-purple-600/40 via-cyan-600/30 to-cyan-500/40 hover:from-purple-600/60 hover:to-cyan-500/60 text-cyan-200 border border-cyan-500/40 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all flex items-center gap-2 active:scale-95 shadow-[0_0_20px_rgba(6,182,212,0.2)]"><i data-lucide="sparkles" class="w-4 h-4 text-cyan-300"></i> Обновить сводку</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div id="ai-summary-dashboard-container" class="space-y-4">
+                                <div class="p-8 text-center bg-black/30 rounded-2xl border border-white/5 space-y-3">
+                                    <i data-lucide="sparkles" class="w-8 h-8 text-cyan-400/50 mx-auto animate-pulse"></i>
+                                    <p class="text-sm text-gray-400">Загрузка данных оперативного штаба...</p>
+                                </div>
+                            </div>
+                            <div id="ai-summary-raw-container" class="hidden space-y-2">
+                                <div class="flex items-center justify-between text-xs text-gray-400 px-1">
+                                    <span>Ручное редактирование текста анализа</span>
+                                    <span class="text-cyan-400">Автосохранение при клике вне поля</span>
+                                </div>
+                                <textarea id="detail-ai-analysis" onblur="saveProfileChanges(); syncRawToDashboard();" class="w-full h-[450px] bg-black/50 border border-white/10 rounded-2xl text-gray-300 text-sm font-mono leading-relaxed p-4 resize-none custom-scrollbar focus:border-cyan-500/50" placeholder="Нажмите «Обновить», чтобы сгенерировать оперативный штаб..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ ROW 4: 2 EQUAL BALANCED COLUMNS ============ -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+
+                    <!-- COL 1: WORKSPACE & CHAT + SERVICES + LOG -->
+                    <div class="flex flex-col gap-4">
+                        
+                        <!-- 1. ДОСТУПЫ -->
+                        <div class="bento shrink-0 !gap-2.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="bento-title"><i data-lucide="terminal" class="w-4 h-4 text-cyan-400"></i> Доступы и Ссылки</div>
+                                <div class="flex items-center gap-1.5">
+                                    <button id="connect-tg-chat-btn" onclick="connectTelegramGroup()" title="Подключить группу (1-Click)" class="h-7 px-2.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1"><i data-lucide="message-square-plus" class="w-3.5 h-3.5"></i> Чат</button>
+                                    <button id="test-tg-btn" onclick="testTelegram()" title="Тест Telegram" class="h-7 px-2.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1"><i data-lucide="send" class="w-3.5 h-3.5"></i> Тест</button>
+                                </div>
+                            </div>
+                            <input type="text" id="field-ads-id" onblur="saveProfileChanges()" placeholder="Ads ID: XXX-XXX-XXXX" class="w-full !bg-black/30 !border-cyan-500/30 text-cyan-300 font-bold font-mono tracking-wider text-sm !py-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="flex gap-1"><input type="text" id="link-ads" onblur="saveProfileChanges()" placeholder="Google Ads" class="flex-1 min-w-0 url-input text-sm !py-2 !px-2.5"><button onclick="openLink('ads')" title="Google Ads" class="w-9 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400"><i data-lucide="external-link" class="w-4 h-4"></i></button></div>
+                                <div class="flex gap-1"><input type="text" id="link-ga" onblur="saveProfileChanges()" placeholder="GA4" class="flex-1 min-w-0 url-input text-sm !py-2 !px-2.5"><button onclick="openLink('ga')" title="Google Analytics" class="w-9 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400"><i data-lucide="external-link" class="w-4 h-4"></i></button></div>
+                                <div class="flex gap-1"><input type="text" id="link-gtm" onblur="saveProfileChanges()" placeholder="GTM" class="flex-1 min-w-0 url-input text-sm !py-2 !px-2.5"><button onclick="openLink('gtm')" title="GTM" class="w-9 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400"><i data-lucide="external-link" class="w-4 h-4"></i></button></div>
+                                <div class="flex gap-1"><input type="text" id="link-site" onblur="saveProfileChanges()" placeholder="Сайт" class="flex-1 min-w-0 url-input text-sm !py-2 !px-2.5"><button onclick="openLink('site')" title="Сайт" class="w-9 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 text-cyan-400"><i data-lucide="external-link" class="w-4 h-4"></i></button></div>
+                            </div>
+                        </div>
+
+                        <!-- 2. ЧАТ TELEGRAM -->
+                        <div class="bento !gap-2.5 h-[520px] flex flex-col">
+                            <div class="flex items-center justify-between gap-2 shrink-0 pb-1.5 border-b border-white/5">
+                                <div class="bento-title text-cyan-400"><i data-lucide="messages-square" class="w-4 h-4"></i> Чат Telegram</div>
+                                <div class="flex items-center gap-2">
+                                    <span id="chat-messages-count" class="px-2 py-0.5 rounded-full text-[11px] bg-cyan-500/10 text-cyan-400 font-bold font-mono border border-cyan-500/20 whitespace-nowrap">0 сообщ.</span>
+                                    <button onclick="openClientTelegramChat()" class="h-7 px-2.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 text-xs font-bold uppercase tracking-wider flex items-center gap-1"><i data-lucide="send" class="w-3.5 h-3.5"></i> В TG</button>
+                                </div>
+                            </div>
+                            <div id="client-chat-history" class="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                                <p class="text-gray-500 text-xs uppercase text-center py-10">Нет сообщений</p>
+                            </div>
+                        </div>
+
+                        <!-- 3. ДОПОЛНИТЕЛЬНЫЕ УСЛУГИ -->
+                        <div class="bento !gap-2.5">
+                            <div class="flex items-center justify-between pb-1.5 border-b border-white/5">
+                                <div class="bento-title text-purple-400"><i data-lucide="shopping-bag" class="w-4 h-4"></i> Дополнительные услуги</div>
+                                <button onclick="addExtraService()" title="Добавить услугу" class="text-cyan-400 hover:text-white transition-colors"><i data-lucide="plus-circle" class="w-4 h-4"></i></button>
+                            </div>
+                            <div id="extra-services-list" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar"></div>
+                            <div id="extra-invoice-container" class="hidden pt-2 border-t border-white/5 grid grid-cols-2 gap-2">
+                                <button id="extra-invoice-btn" onclick="sendExtraInvoice()" class="py-2 bg-indigo-600/20 text-indigo-400 border border-indigo-600/50 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-1"><i data-lucide="receipt" class="w-3.5 h-3.5"></i> Счёт</button>
+                                <button onclick="confirmExtraPayment()" class="py-2 bg-green-600/20 text-green-400 border border-green-600/50 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-green-600 hover:text-white transition-all flex items-center justify-center gap-1"><i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Оплачено</button>
+                            </div>
+                            <div id="add-service-form" class="hidden grid grid-cols-1 gap-2 p-3 bg-white/5 rounded-xl border border-white/5">
+                                <input type="text" id="new-service-name" placeholder="Название услуги" class="text-sm">
+                                <input type="number" id="new-service-amount" placeholder="Цена ($)" class="text-sm">
+                                <button onclick="confirmAddService()" class="bg-cyan-500 text-black font-bold rounded-lg text-xs uppercase tracking-wider h-9">Добавить</button>
+                            </div>
+                        </div>
+
+                        <!-- 4. ЛОГ СОБЫТИЙ -->
+                        <div class="bento !gap-2.5 min-w-0 overflow-hidden">
+                            <div class="bento-title text-purple-400 pb-1.5 border-b border-white/5 min-w-0 w-full flex items-center justify-between">
+                                <div class="flex items-center gap-2 min-w-0 overflow-hidden">
+                                    <i data-lucide="history" class="w-4 h-4 shrink-0"></i>
+                                    <span class="truncate">Лог событий</span>
+                                </div>
+                            </div>
+                            <div id="history-log" class="max-h-52 overflow-y-auto custom-scrollbar space-y-1 pr-1 min-w-0"></div>
+                        </div>
+                    </div>
+
+                    <!-- COL 2: CAMPAIGNS / CONVERSIONS / QUERIES -->
+                    <div class="flex flex-col gap-4">
+                        <div class="bento !gap-2.5">
+                            <div class="bento-title shrink-0 pb-1 border-b border-white/5"><i data-lucide="layers" class="w-4 h-4 text-cyan-400"></i> Кампании (<span id="ads-camp-count">0</span>)</div>
+                            <div id="ads-campaigns-list" class="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar pr-1"><p class="text-gray-500 text-xs uppercase text-center py-4">Нет данных</p></div>
+                        </div>
+                        <div class="bento !gap-2.5">
+                            <div class="bento-title shrink-0 pb-1 border-b border-white/5"><i data-lucide="target" class="w-4 h-4 text-emerald-400"></i> Цели конверсий (<span id="ads-conv-count">0</span>)</div>
+                            <div id="ads-conversions-list" class="space-y-1.5 max-h-[260px] overflow-y-auto custom-scrollbar pr-1"><p class="text-gray-500 text-xs uppercase text-center py-4">Нет данных</p></div>
+                        </div>
+                        <div class="bento !gap-2.5">
+                            <div class="bento-title shrink-0 pb-1 border-b border-white/5"><i data-lucide="search" class="w-4 h-4 text-purple-400"></i> Поисковые запросы с конверсиями</div>
+                            <div id="ads-queries-list" class="space-y-1.5 max-h-[300px] overflow-y-auto custom-scrollbar pr-1"><p class="text-gray-500 text-xs uppercase text-center py-4">Нет данных</p></div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
             </div>
             <!-- ========================================== -->
             <!-- 🏛️ ARES OS INTELLIGENCE CONTROL CENTER    -->
@@ -930,198 +932,6 @@
                 </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- 🔞 EMANUEL DATING OS (SEX MODE) VIEW      -->
-            <!-- ========================================== -->
-            <div id="emanuel-view" class="view-section p-5 md:p-10">
-                <div class="max-w-7xl mx-auto space-y-6 pb-20">
-                    <!-- Header Banner -->
-                    <div class="flex items-center justify-between flex-wrap gap-4 glass rounded-2xl p-5 border border-white/5 shadow-2xl">
-                        <div class="flex items-center gap-3.5">
-                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center border border-rose-400/40 text-white shadow-lg shadow-rose-500/20">
-                                <i data-lucide="flame" class="w-6 h-6"></i>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-2">
-                                    <h3 class="text-white font-black text-lg uppercase tracking-wider">Emanuel Dating OS</h3>
-                                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30 uppercase tracking-widest">Wingman Core</span>
-                                </div>
-                                <span class="text-xs text-slate-400">Быстрая проверка сексуальной совместимости через вопрос о табу и границах</span>
-                            </div>
-                        </div>
-
-                        <!-- Mode Badge in Header -->
-                        <div class="flex items-center gap-2 bg-rose-950/40 px-3.5 py-2 rounded-xl border border-rose-500/30 shadow-sm">
-                            <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                            <span class="text-xs font-black uppercase tracking-wider text-rose-300">🔞 SEX MODE (Time to Compatibility)</span>
-                        </div>
-
-                        <div class="flex items-center gap-2.5">
-                            <button onclick="window.EmanuelOS.openLeadMeModal()" class="px-3.5 py-2 bg-gradient-to-r from-purple-500/20 to-rose-500/20 hover:from-purple-500/30 hover:to-rose-500/30 border border-purple-500/40 text-purple-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shadow-sm">
-                                <i data-lucide="compass" class="w-3.5 h-3.5"></i>
-                                <span>Веди меня</span>
-                            </button>
-                            <a href="https://t.me/emanuellovebot" target="_blank" class="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 rounded-xl font-bold text-xs flex items-center gap-1.5 transition">
-                                <i data-lucide="send" class="w-3.5 h-3.5"></i> @emanuellovebot
-                            </a>
-                            <button onclick="window.EmanuelOS.loadData()" class="p-2 bg-white/5 hover:bg-white/10 rounded-xl text-slate-300 transition" title="Обновить">
-                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Target Gateway Status Strip -->
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                        <div class="md:col-span-8 glass rounded-2xl p-4 border border-rose-500/20 bg-gradient-to-r from-rose-950/30 via-slate-900/60 to-slate-900/60 flex items-center justify-between flex-wrap gap-4">
-                            <div class="flex items-center gap-3">
-                                <div id="emanuel-steps-badge" class="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-extrabold text-sm flex items-center gap-2">
-                                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                                    <span id="emanuel-steps-text">Дистанция: ~1 шаг до табу</span>
-                                </div>
-                                <div>
-                                    <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Стратегия хода</div>
-                                    <div id="emanuel-tactic-text" class="text-xs font-bold text-white">BUILD_COMFORT: Разогрев комфорта</div>
-                                </div>
-                            </div>
-                            <button onclick="window.EmanuelOS.fastTrackAdvice()" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white font-extrabold text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-rose-500/20 flex items-center gap-2 transition active:scale-95">
-                                <i data-lucide="zap" class="w-4 h-4"></i>
-                                <span>Быстрее к вопросу</span>
-                            </button>
-                        </div>
-                        <div class="md:col-span-4 glass rounded-2xl p-4 border border-white/5 flex items-center justify-between">
-                            <div>
-                                <div class="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Активный диалог</div>
-                                <div id="emanuel-current-girl-title" class="text-sm font-bold text-rose-400">Загрузка...</div>
-                            </div>
-                            <button onclick="window.EmanuelOS.promptNewGirl()" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold transition flex items-center gap-1">
-                                <i data-lucide="plus" class="w-3 h-3"></i> Новая
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Main Grid: Left Column (Dialogues), Right Column (Simulator & History) -->
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        <!-- LEFT COLUMN: Dialogues (N-girls) -->
-                        <div class="lg:col-span-4 space-y-6">
-                            <!-- Sessions Card -->
-                            <div class="glass rounded-2xl p-5 border border-white/5 space-y-4">
-                                <div class="flex items-center justify-between border-b border-white/5 pb-3">
-                                    <div class="flex items-center gap-2">
-                                        <i data-lucide="users" class="w-4 h-4 text-rose-400"></i>
-                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">Мои диалоги</h4>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <button onclick="window.EmanuelOS.toggleArchiveView()" id="emanuel-btn-toggle-archive" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 transition">
-                                            📦 Архив
-                                        </button>
-                                        <button onclick="window.EmanuelOS.promptNewGirl()" class="text-[10px] px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 border border-rose-500/30 font-bold transition flex items-center gap-1">
-                                            <i data-lucide="plus" class="w-3 h-3"></i> Добавить
-                                        </button>
-                                    </div>
-                                </div>
-                                <div id="emanuel-slots-list" class="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-                                    <!-- Dynamic Sessions -->
-                                </div>
-                            </div>
-
-                            <!-- Girl Profile & Dossier Card -->
-                            <div class="glass rounded-2xl p-5 border border-white/5 space-y-4">
-                                <div class="flex items-center justify-between border-b border-white/5 pb-3">
-                                    <div class="flex items-center gap-2">
-                                        <i data-lucide="book-open" class="w-4 h-4 text-purple-400"></i>
-                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">Досье девушки</h4>
-                                    </div>
-                                    <input type="file" id="emanuel-profile-file-input" accept="image/*" class="hidden">
-                                    <button onclick="document.getElementById('emanuel-profile-file-input').click()" 
-                                            class="text-[10px] px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/30 font-bold transition flex items-center gap-1">
-                                        <i data-lucide="camera" class="w-3 h-3"></i> Скрин анкеты
-                                    </button>
-                                </div>
-                                <div id="emanuel-dossier-wrap" class="space-y-3 text-xs text-slate-300">
-                                    <div class="text-slate-500 italic text-[11px]">Загрузи скриншот анкеты из Tinder/Pure для извлечения зацепок и скрытого подтекста.</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- RIGHT COLUMN: Interactive Simulator & Chat -->
-                        <div class="lg:col-span-8 space-y-6">
-                            <!-- Input Generator Box -->
-                            <div class="glass rounded-2xl p-5 border border-white/5 space-y-4 shadow-xl">
-                                <div class="flex items-center justify-between border-b border-white/5 pb-3">
-                                    <div class="flex items-center gap-2">
-                                        <i data-lucide="sparkles" class="w-4 h-4 text-rose-400"></i>
-                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">Входящее сообщение / Скриншот</h4>
-                                    </div>
-                                    <span class="text-[10px] px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono">Gemini 2.5 Flash</span>
-                                </div>
-
-                                <!-- Textarea -->
-                                <div class="space-y-2">
-                                    <textarea id="emanuel-girl-text" rows="3" 
-                                              class="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500/60 transition"
-                                              placeholder="Вставь сюда последнее сообщение девушки (или прикрепи скриншот диалога ниже)..."></textarea>
-                                </div>
-
-                                <!-- Photo Upload & Preview -->
-                                <div id="emanuel-photo-preview-wrap" class="hidden items-center gap-3 p-3 bg-slate-900/80 border border-slate-800 rounded-xl">
-                                    <img id="emanuel-photo-preview" src="" class="w-16 h-16 object-cover rounded-lg border border-slate-700">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="text-xs font-semibold text-slate-200">Скриншот прикреплен</div>
-                                        <div class="text-[10px] text-slate-400">Gemini Vision автоматически распознает переписку</div>
-                                    </div>
-                                    <button onclick="window.EmanuelOS.removeUploadedPhoto()" class="p-1.5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition">
-                                        <i data-lucide="x" class="w-4 h-4"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Action Buttons -->
-                                <div class="flex items-center justify-between gap-3 pt-1">
-                                    <div>
-                                        <input type="file" id="emanuel-photo-input" accept="image/*" class="hidden">
-                                        <button onclick="document.getElementById('emanuel-photo-input').click()" 
-                                                class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition flex items-center gap-2 border border-slate-700/60">
-                                            <i data-lucide="image" class="w-3.5 h-3.5"></i>
-                                            <span>Скриншот</span>
-                                        </button>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <button id="emanuel-generate-btn" onclick="window.EmanuelOS.generateAdvice()" 
-                                                class="px-6 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition shadow-lg shadow-rose-500/20 flex items-center gap-2">
-                                            <i data-lucide="zap" class="w-4 h-4"></i>
-                                            <span>Найти лучший ход</span>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <!-- Result Area -->
-                                <div id="emanuel-advice-result-wrap" class="hidden border-t border-white/5 pt-4 space-y-4">
-                                    <!-- Dynamic Compatibility Radar Banner -->
-                                    <div id="emanuel-radar-banner" class="hidden"></div>
-                                    <!-- Dynamic 3 Options -->
-                                    <div id="emanuel-advice-result"></div>
-                                </div>
-                            </div>
-
-                            <!-- Chat History Viewer -->
-                            <div class="glass rounded-2xl p-5 border border-white/5 space-y-4">
-                                <div class="flex items-center justify-between border-b border-white/5 pb-3">
-                                    <div class="flex items-center gap-2">
-                                        <i data-lucide="messages-square" class="w-4 h-4 text-rose-400"></i>
-                                        <h4 class="text-white font-bold text-xs uppercase tracking-wider">История диалога слота</h4>
-                                    </div>
-                                    <button onclick="window.EmanuelOS.loadHistory()" class="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 transition">
-                                        <i data-lucide="rotate-cw" class="w-3 h-3"></i> Обновить
-                                    </button>
-                                </div>
-                                <div id="emanuel-chat-turns" class="max-h-[380px] overflow-y-auto pr-2">
-                                    <!-- Dynamic chat bubbles -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Intent Edit Modal -->
             <div id="ares-intent-modal" class="fixed inset-0 items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md hidden z-[1000] flex">
                 <div class="glass max-w-lg w-full p-5 sm:p-8 rounded-3xl sm:rounded-[2rem] border border-white/10 space-y-5 sm:space-y-6 max-h-[90vh] overflow-y-auto">
@@ -1190,43 +1000,18 @@
                 </div>
             </div>
 
-            <!-- Emanuel Lead Me Modal -->
-            <div id="emanuel-leadme-modal" class="fixed inset-0 items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md hidden z-[1000] flex">
-                <div class="glass max-w-2xl w-full p-6 rounded-3xl border border-rose-500/20 space-y-4 max-h-[85vh] flex flex-col shadow-2xl">
-                    <div class="flex items-center justify-between border-b border-white/5 pb-3">
-                        <div class="flex items-center gap-2.5">
-                            <div class="w-8 h-8 rounded-xl bg-gradient-to-r from-purple-500/20 to-rose-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
-                                <i data-lucide="compass" class="w-4 h-4"></i>
-                            </div>
-                            <h3 class="text-base font-extrabold text-white uppercase tracking-wider">🧭 Emanuel «Веди меня»</h3>
-                        </div>
-                        <button onclick="window.EmanuelOS.closeLeadMeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg transition">
-                            <i data-lucide="x" class="w-5 h-5"></i>
-                        </button>
-                    </div>
-                    <div id="emanuel-leadme-content" class="overflow-y-auto flex-1 pr-1 space-y-3">
-                        <!-- Loaded dynamically -->
-                    </div>
-                    <div class="pt-2 border-t border-white/5 flex justify-end">
-                        <button onclick="window.EmanuelOS.closeLeadMeModal()" class="px-5 py-2.5 bg-white/10 hover:bg-white/15 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition">
-                            Закрыть
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
     </main>
 
     <!-- Наши разделенные файлы логики (Classic Scripts) -->
-    <script src="/js/config.js?v=1788309000000"></script>
-    <script src="/js/state.js?v=1788309000000"></script>
-    <script src="/js/helpers.js?v=1788309000000"></script>
-    <script src="/js/api.js?v=1788309000000"></script>
-    <script src="/js/ui.js?v=1788309000000"></script>
-    <script src="/js/ares_os.js?v=1788309000000"></script>
-    <script src="/js/emanuel.js?v=1788309000000"></script>
+    <script src="/js/config.js?v=1790861000000"></script>
+    <script src="/js/state.js?v=1790861000000"></script>
+    <script src="/js/helpers.js?v=1790861000000"></script>
+    <script src="/js/api.js?v=1790861000000"></script>
+    <script src="/js/ui.js?v=1790861000000"></script>
+    <script src="/js/ares_os.js?v=1790861000000"></script>
     
     <!-- Точка входа (ES модуль для импорта Firebase) -->
-    <script type="module" src="/js/app.js?v=1788309000000"></script>
+    <script type="module" src="/js/app.js?v=1790861000000"></script>
 </body>
 </html>

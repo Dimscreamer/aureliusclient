@@ -287,18 +287,109 @@ window.confirmExtraPayment = async () => {
 // ============================
 
 function diagSetLog(text) {
-    const el = document.getElementById('diag-log-output');
+    const el = document.getElementById('diag-log-output') || document.getElementById('diag-system-logs');
     if (el) { el.textContent = text; el.scrollTop = el.scrollHeight; }
 }
 
 function diagAppendLog(text) {
-    const el = document.getElementById('diag-log-output');
+    const el = document.getElementById('diag-log-output') || document.getElementById('diag-system-logs');
     if (el) {
         if (el.querySelector('span')) el.innerHTML = '';
         el.textContent += text + '\n';
         el.scrollTop = el.scrollHeight;
     }
 }
+
+window.populateDiagAdsClients = () => {
+    const sel = document.getElementById('diag-ads-client-select');
+    if (!sel || !window.clientsData || !Array.isArray(window.clientsData)) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">Авто (первый с Ads)</option>';
+
+    const sorted = [...window.clientsData].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    sorted.forEach(c => {
+        if (!c.archived && c.status !== 'Архив') {
+            const hasAds = !!(c.adsId || c.ads_stats || c.adsStats);
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = `${c.name || 'Клиент'}${hasAds ? ' 📊' : ''}`;
+            sel.appendChild(opt);
+        }
+    });
+    if (currentVal) sel.value = currentVal;
+};
+
+window.diagTestWeeklyAdsReport = async () => {
+    const sel = document.getElementById('diag-ads-client-select');
+    const clientId = sel ? sel.value : '';
+
+    diagSetBtnLoading('diag-ads-report-btn', true);
+    diagSetLog('⏳ Формирование еженедельной графики Google Ads и отправка в ЛС админа...\n');
+
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'testWeeklyAdsReportToAdmin',
+                clientId: clientId || null
+            })
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+            diagAppendLog(`✅ УСПЕХ! Графика по проекту "${data.clientName}" (${data.periodName}) сгенерирована.`);
+            diagAppendLog(`📲 Отправлено ботом напрямую в ваши личные сообщения Telegram (Chat ID: ${data.chatId}).`);
+            diagAppendLog(`👉 Проверьте диалог с ботом в Telegram!`);
+        } else {
+            diagAppendLog(`❌ Ошибка на сервере: ${data.message || data.error || JSON.stringify(data)}`);
+        }
+    } catch (e) {
+        diagAppendLog(`❌ Ошибка запроса: ${e.message}`);
+    } finally {
+        diagSetBtnLoading('diag-ads-report-btn', false);
+    }
+};
+
+window.testCurrentClientWeeklyReportToAdmin = async () => {
+    const c = (typeof clientsData !== 'undefined' && Array.isArray(clientsData))
+        ? clientsData.find(x => x.id === currentClientId)
+        : null;
+
+    const btn = document.getElementById('test-dash-pm-btn');
+    const originalText = btn ? btn.innerHTML : 'В ЛС (Тест)';
+    if (btn) {
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Отправка...';
+        btn.disabled = true;
+        if (window.lucide) lucide.createIcons();
+    }
+
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'testWeeklyAdsReportToAdmin',
+                clientId: c ? c.id : null,
+                period: window.currentAdsPeriod || 'LAST_30_DAYS'
+            })
+        });
+        const data = await resp.json();
+        if (data.status === 'success') {
+            alert(`✅ Графика по проекту "${data.clientName}" (${data.periodName}) успешно отправлена вам в личные сообщения Telegram!`);
+        } else {
+            alert(`❌ Ошибка: ${data.message || data.error || 'Не удалось отправить'}`);
+        }
+    } catch (e) {
+        console.error('testCurrentClientWeeklyReportToAdmin error:', e);
+        alert(`❌ Ошибка отправки: ${e.message}`);
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+};
 
 function diagSetBtnLoading(btnId, loading, originalText) {
     const btn = document.getElementById(btnId);
@@ -545,6 +636,7 @@ setTimeout(() => {
                 diagInterval = null;
             }
             if (id === 'diagnostics') {
+                if (window.populateDiagAdsClients) window.populateDiagAdsClients();
                 loadScheduledQueue();
                 loadSystemLogs();
                 loadWebhookHistory();
@@ -693,7 +785,7 @@ window.generateClientPsychotype = async () => {
     const originalBtnText = btn ? btn.innerHTML : '';
 
     if (btn) {
-        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-1.5 text-cyan-400"></i> Анализ чата (90 дней)...`;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-3 h-3 inline animate-spin mr-1.5 text-cyan-400"></i> Анализ задач и настроя...`;
         btn.disabled = true;
     }
     if (window.lucide) lucide.createIcons();
@@ -702,7 +794,7 @@ window.generateClientPsychotype = async () => {
         const resp = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'generateClientPsychotype', clientId: currentClientId.toString() })
+            body: JSON.stringify({ action: 'generateClientSummary', clientId: currentClientId.toString() })
         });
         const data = await resp.json();
         if (data.success) {
@@ -712,10 +804,16 @@ window.generateClientPsychotype = async () => {
                 setTimeout(() => textarea.classList.remove('!border-cyan-500', '!bg-cyan-500/10'), 2500);
             }
             const c = clientsData.find(x => x.id === currentClientId);
-            if (c) c.ai_analysis = data.ai_analysis;
-            alert(`✅ Психотип и срез болей успешно сгенерирован Марком на основе ${data.messagesCount || 'всех'} сообщений за 90 дней!`);
+            if (c) {
+                c.ai_analysis = data.ai_analysis;
+                c.ai_analysis_data = data.ai_analysis_data;
+                if (typeof renderAiSummaryDashboard === 'function') {
+                    renderAiSummaryDashboard(c);
+                }
+            }
+            alert(`✅ Сводка задач, статуса и настроя клиента успешно сформирована Марком на основе ${data.messagesCount || 'всех'} сообщений из чата!`);
         } else {
-            alert(`⚠️ ${data.error || 'Не удалось сгенерировать психотип'}`);
+            alert(`⚠️ ${data.error || 'Не удалось сформировать сводку'}`);
         }
     } catch (e) {
         alert(`❌ Ошибка запроса: ${e.message}`);
@@ -725,6 +823,89 @@ window.generateClientPsychotype = async () => {
             btn.disabled = false;
         }
         if (window.lucide) lucide.createIcons();
+    }
+};
+
+window.generateClientSummary = window.generateClientPsychotype;
+
+/* ==========================================================================
+   CLIENT TASKS & TELEGRAM REMINDERS API
+   ========================================================================== */
+
+window.fetchClientTasks = async function(clientId) {
+    if (!clientId) return [];
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getClientTasks', clientId: clientId.toString() })
+        });
+        const data = await resp.json();
+        return data.success ? (data.tasks || []) : [];
+    } catch (e) {
+        console.error('fetchClientTasks error:', e);
+        return [];
+    }
+};
+
+window.saveClientTask = async function(taskData) {
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'saveClientTask', ...taskData })
+        });
+        return await resp.json();
+    } catch (e) {
+        console.error('saveClientTask error:', e);
+        return { success: false, error: e.message };
+    }
+};
+
+window.toggleClientTask = async function(taskId, currentStatus) {
+    try {
+        const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'toggleClientTask', taskId: taskId, status: newStatus })
+        });
+        return await resp.json();
+    } catch (e) {
+        console.error('toggleClientTask error:', e);
+        return { success: false, error: e.message };
+    }
+};
+
+window.deleteClientTask = async function(taskId) {
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'deleteClientTask', taskId: taskId })
+        });
+        return await resp.json();
+    } catch (e) {
+        console.error('deleteClientTask error:', e);
+        return { success: false, error: e.message };
+    }
+};
+
+window.checkTaskReminders = async function() {
+    try {
+        const resp = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'checkTaskReminders' })
+        });
+        const data = await resp.json();
+        if (data.success) {
+            alert(`✅ Проверка напоминаний выполнена! Отправлено в ЛС: ${data.result?.count || 0}`);
+        } else {
+            alert(`⚠️ Ошибка: ${data.error || 'Не удалось проверить'}`);
+        }
+    } catch (e) {
+        alert(`❌ Ошибка запроса: ${e.message}`);
     }
 };
 

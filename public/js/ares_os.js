@@ -8,8 +8,62 @@ function escapeHtml(text) {
         .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-let aresIntentsData = [];
-let aresModulesData = [];
+let aresIntentsData = [
+    { function: "[[ADS_OVERVIEW]]", module: "ads", exact: "сводка гугл адс, сводка реклама, обзор рекламы, ads overview", instruction: "Показать общую сводку Google Ads", enabled: true },
+    { function: "[[ADS_PROJECT_STATS]]", module: "ads", exact: "статистика проекта, покажи статистику, stats проекта", instruction: "Показать статистику по проекту", enabled: true },
+    { function: "[[ADS_CONVERSIONS]]", module: "ads", exact: "конверсии, сколько конверсий, покажи конверсии, лиды адс", instruction: "Показать конверсии рекламы", enabled: true },
+    { function: "[[ADS_QUERIES]]", module: "ads", exact: "поисковые запросы, ключевые слова адс, запросы кампании", instruction: "Показать поисковые запросы", enabled: true },
+    { function: "[[ADS_CAMPAIGNS]]", module: "ads", exact: "статистика кампаний, покажи кампании", instruction: "Показать статистику кампаний", enabled: true },
+    { function: "[[ADS_AUDIT]]", module: "ads", exact: "аудит рекламы, тренд адс, аналитика проекта", instruction: "Провести аудит рекламы", enabled: true },
+
+    { function: "[[CALENDAR_ADD:]]", module: "calendar", exact: "запланируй встречу, добавь в календарь, создай событие, поставь встречу", instruction: "Создать событие в Google Календаре", enabled: true },
+    { function: "[[CALENDAR_GET:]]", module: "calendar", exact: "покажи расписание, что у меня сегодня, мои события, что в календаре", instruction: "Показать расписание событий", enabled: true },
+    { function: "[[CALENDAR_DELETE:]]", module: "calendar", exact: "удали событие, отмени встречу, убери из календаря", instruction: "Удалить событие из календаря", enabled: true },
+
+    { function: "[[FINANCE_SUMMARY:]]", module: "finance", exact: "финансовая сводка, покажи финансы, что по деньгам, баланс", instruction: "Показать финансовую сводку", enabled: true },
+    { function: "[[FINANCE_ADVICE:]]", module: "finance", exact: "могу ли я купить, стоит ли покупать, хватит ли денег на", instruction: "Дать совет по покупке", enabled: true },
+    { function: "[[FINANCE_FORECAST:]]", module: "finance", exact: "прогноз финансов, финансовый прогноз, сколько денег будет", instruction: "Показать прогноз финансов", enabled: true },
+
+    { function: "[[ADD_TASK:]]", module: "tasks", exact: "добавь задачу, создай задачу, поставь задачу, новая задача", instruction: "Добавить задачу в список", enabled: true },
+    { function: "[[GET_TASKS:]]", module: "tasks", exact: "покажи задачи, список задач, мои задачи, что по задачам", instruction: "Показать список задач", enabled: true },
+    { function: "[[DELETE_TASK:]]", module: "tasks", exact: "удали задачу, убери задачу, вычеркни задачу", instruction: "Удалить конкретную задачу", enabled: true },
+    { function: "[[CLEAR_TASKS:]]", module: "tasks", exact: "очисти все задачи, удали все задачи сегодня", instruction: "Очистить задачи за день", enabled: true },
+
+    { function: "[[NUTRITION_ADD:]]", module: "nutrition", exact: "записать еду, съел, съела, добавить в рацион, запиши калории", instruction: "Записать прием пищи и рассчитать КБЖУ", enabled: true },
+    { function: "[[NUTRITION_SUMMARY:]]", module: "nutrition", exact: "сводка питания, покажи рацион, что я съел сегодня, сводка калорий", instruction: "Показать сводку питания", enabled: true },
+    { function: "[[NUTRITION_PLAN:]]", module: "nutrition", exact: "прикинь план питания, что мне съесть, составь рацион", instruction: "Составить план питания", enabled: true },
+
+    { function: "[[TG_REMINDER:]]", module: "reminders", exact: "напомни мне, поставь напоминание, создай таймер, поставь будильник", instruction: "Создать напоминание", enabled: true },
+    { function: "[[GET_REMINDERS]]", module: "reminders", exact: "покажи напоминания, мои напоминания, список напоминаний", instruction: "Показать список напоминаний", enabled: true },
+    { function: "[[DELETE_REMINDER:]]", module: "reminders", exact: "удали напоминание, отмени напоминание, убери напоминание", instruction: "Удалить напоминание", enabled: true },
+
+    { function: "[[GET_NEWS:]]", module: "news", exact: "что нового, последние новости, новости сегодня, покажи новости", instruction: "Получить сводку новостей", enabled: true },
+    { function: "[[GET_WEATHER:]]", module: "weather", exact: "какая погода, погода сегодня, прогноз погоды, что по погоде", instruction: "Запросить прогноз погоды", enabled: true },
+    { function: "[[METANOIA_LOG:]]", module: "metanoia", exact: "запиши триггер, меня бесит, я злюсь, метаноя", instruction: "Зафиксировать эмоциональный триггер", enabled: true },
+    { function: "[[METANOIA_ANALYSIS:]]", module: "metanoia", exact: "анализ метаноя, глубокий анализ паттернов", instruction: "Провести психоанализ мышления", enabled: true },
+    { function: "[[DOOMSCROLL_FORCE_RUN]]", module: "doomscroll", exact: "думскроллинг, новости вне очереди, пришли новости", instruction: "Запросить порцию новостей вне очереди", enabled: true },
+    { function: "[[PARSER_RUN]]", module: "parser", exact: "запусти парсер, запуск парсера, парсинг", instruction: "Запустить ручной парсинг каналов", enabled: true }
+];
+
+let aresModulesData = [
+    { name: "ads", title: "📊 Google Ads & CRM", desc: "Управление кампаниями, KPI и аналитикой", icon: "trending-up", color: "#06b6d4", enabled: true, priority: 90, sessionTimeout: 10 },
+    { name: "calendar", title: "📅 Календарь", desc: "События и расписание Google Calendar", icon: "calendar", color: "#10b981", enabled: true, priority: 88, sessionTimeout: 10 },
+    { name: "finance", title: "💰 Финансы", desc: "Учет доходов, расходов и платежей", icon: "dollar-sign", color: "#f59e0b", enabled: true, priority: 85, sessionTimeout: 10 },
+    { name: "tasks", title: "✅ Задачи", desc: "Трекер операционных задач и проектов", icon: "check-square", color: "#8b5cf6", enabled: true, priority: 80, sessionTimeout: 10 },
+    { name: "nutrition", title: "🍎 Питание", desc: "Дневник питания, расчет калорий и БЖУ", icon: "apple", color: "#ef4444", enabled: true, priority: 75, sessionTimeout: 10 },
+    { name: "diary", title: "📝 Дневник", desc: "Заметки, вечерняя рефлексия и мысли", icon: "book-open", color: "#ec4899", enabled: true, priority: 70, sessionTimeout: 10 },
+    { name: "reminders", title: "⏰ Напоминания", desc: "Уведомления и запланированные сигналы", icon: "bell", color: "#3b82f6", enabled: true, priority: 65, sessionTimeout: 10 },
+    { name: "news", title: "📰 Новости", desc: "Интеллектуальная сводка новостей и трендов", icon: "newspaper", color: "#6366f1", enabled: true, priority: 60, sessionTimeout: 10 },
+    { name: "metanoia", title: "🧘 Метанойя", desc: "Ментальное здоровье, когнитивный майндсет", icon: "sparkles", color: "#a855f7", enabled: true, priority: 55, sessionTimeout: 10 },
+    { name: "weather", title: "🌤 Погода", desc: "Прогноз погоды и агрометеоинформация", icon: "cloud-sun", color: "#38bdf8", enabled: true, priority: 50, sessionTimeout: 10 },
+    { name: "doomscroll", title: "📰 Инфо-Гигиена", desc: "Фильтрация новостного шума и сводки", icon: "shield-alert", color: "#f43f5e", enabled: true, priority: 40, sessionTimeout: 10 },
+    { name: "parser", title: "🤖 Парсер Telegram", desc: "Мониторинг каналов и ключевых слов", icon: "terminal", color: "#14b8a6", enabled: true, priority: 40, sessionTimeout: 10 },
+    { name: "radar", title: "🛡️ Радар ТЦК", desc: "Мониторинг безопасных зон и ситуаций", icon: "radio", color: "#eab308", enabled: true, priority: 60, sessionTimeout: 10 },
+    { name: "flex", title: "⚡ Флекс", desc: "Быстрые сценарии и автоматический роутинг", icon: "zap", color: "#64748b", enabled: true, priority: 30, sessionTimeout: 10 },
+    { name: "parenting", title: "👶 Воспитание", desc: "Советы, трекинг и возрастная психология", icon: "smile", color: "#f472b6", enabled: true, priority: 50, sessionTimeout: 10 },
+    { name: "automation", title: "⚙️ Автоматизация", desc: "Кастомные скрипты и интеграционные триггеры", icon: "cpu", color: "#00e5ff", enabled: true, priority: 90, sessionTimeout: 10 }
+];
+
 let aresSettingsData = { model: "google/gemini-2.5-flash-lite", debug: false };
 let currentAresSubView = 'hub';
 let activeIntentFilter = 'all';
@@ -66,8 +120,9 @@ async function loadAresIntents() {
             body: JSON.stringify({ action: 'ares_getIntents' })
         });
         const data = await res.json();
-        if (data.success && data.intents) {
+        if (data.success && data.intents && data.intents.length > 0) {
             aresIntentsData = data.intents;
+            if (currentAresSubView === 'intents') renderAresIntents();
         }
     } catch(e) {
         console.error("loadAresIntents error:", e);
@@ -82,8 +137,9 @@ async function loadAresModules() {
             body: JSON.stringify({ action: 'ares_getModules' })
         });
         const data = await res.json();
-        if (data.success && data.modules) {
+        if (data.success && data.modules && data.modules.length > 0) {
             aresModulesData = data.modules;
+            if (currentAresSubView === 'modules') renderAresModules();
         }
     } catch(e) {
         console.error("loadAresModules error:", e);

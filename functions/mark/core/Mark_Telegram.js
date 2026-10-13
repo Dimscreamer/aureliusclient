@@ -212,9 +212,14 @@ async function answerCallbackQuery(callbackQueryId, text = '') {
 }
 
 
-async function sendTelegramPhoto(chatId, base64Image, caption = '') {
-    const b64 = base64Image.replace(/^data:image\/png;base64,/, "");
-    const buffer = Buffer.from(b64, 'base64');
+async function sendTelegramPhoto(chatId, imageInput, caption = '') {
+    let buffer;
+    if (Buffer.isBuffer(imageInput)) {
+        buffer = imageInput;
+    } else {
+        const b64 = String(imageInput).replace(/^data:image\/png;base64,/, "");
+        buffer = Buffer.from(b64, 'base64');
+    }
     const blob = new Blob([buffer], { type: 'image/png' });
     const fd = new FormData();
     fd.append('chat_id', String(chatId));
@@ -237,11 +242,44 @@ async function sendTelegramPhoto(chatId, base64Image, caption = '') {
     }
 }
 
+/**
+ * Получить файл из Telegram по file_id и вернуть как base64 с метаданными.
+ * Используется для загрузки голосовых сообщений (voice/audio).
+ */
+async function getTelegramFileAsBase64(fileId) {
+    if (!fileId) return null;
+    const getFileUrl = `https://api.telegram.org/bot${MARK_CONFIG.TELEGRAM_TOKEN}/getFile?file_id=${encodeURIComponent(fileId)}`;
+    const fileRes = await axios.get(getFileUrl, { timeout: 10000 });
+    
+    if (!fileRes.data || !fileRes.data.ok || !fileRes.data.result || !fileRes.data.result.file_path) {
+        throw new Error(`Telegram getFile failed: ${JSON.stringify(fileRes.data)}`);
+    }
+
+    const filePath = fileRes.data.result.file_path;
+    const downloadUrl = `https://api.telegram.org/file/bot${MARK_CONFIG.TELEGRAM_TOKEN}/${filePath}`;
+    const fileData = await axios.get(downloadUrl, { responseType: 'arraybuffer', timeout: 30000 });
+    const base64 = Buffer.from(fileData.data).toString('base64');
+    
+    let format = 'ogg';
+    const ext = filePath.split('.').pop()?.toLowerCase();
+    if (ext === 'mp3' || ext === 'wav' || ext === 'm4a' || ext === 'ogg' || ext === 'oga') {
+        format = (ext === 'oga') ? 'ogg' : ext;
+    }
+
+    return {
+        base64,
+        filePath,
+        format,
+        fileSize: fileRes.data.result.file_size
+    };
+}
+
 module.exports = {
     sendTelegramPhoto,
     formatTelegramHtml,
     sendTelegramMessage,
     editTelegramMessage,
     sendChatAction,
-    answerCallbackQuery
+    answerCallbackQuery,
+    getTelegramFileAsBase64
 };

@@ -4,8 +4,8 @@ const admin = require('firebase-admin');
  */
 const axios = require('axios');
 const { MARK_CONFIG } = require('./Mark_Config');
-const { sendTelegramMessage, editTelegramMessage, sendChatAction, answerCallbackQuery } = require('./Mark_Telegram');
-const { callMarkLLM } = require('./Mark_AI_Bridge');
+const { sendTelegramMessage, editTelegramMessage, sendChatAction, answerCallbackQuery, getTelegramFileAsBase64 } = require('./Mark_Telegram');
+const { callMarkLLM, transcribeVoiceAudio } = require('./Mark_AI_Bridge');
 const { routeMessage } = require('./Mark_Router');
 const { getModule } = require('./Mark_Registry');
 const { Module_Freelancehunt } = require('../modules/Module_Freelancehunt');
@@ -50,6 +50,189 @@ async function saveClientMessage(db, client, msgData) {
             }, { merge: true });
     } catch (err) {
         console.error('[Mark_Kernel] saveClientMessage error:', err.message);
+    }
+}
+
+/**
+ * Вспомогательное экранирование HTML для Telegram сообщений
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * Вычисление дня накануне даты (YYYY-MM-DD)
+ */
+function getDayBefore(ymdStr) {
+    if (!ymdStr) return null;
+    const d = new Date(ymdStr + "T12:00:00Z");
+    d.setUTCDate(d.getUTCDate() - 1);
+    return d.toISOString().split('T')[0];
+}
+
+/**
+ * Эвристическая быстрая проверка наличия намерений задач/дедлайнов
+ */
+function shouldCheckMessageForTasks(text) {
+    if (!text || typeof text !== 'string') return false;
+    const clean = text.trim();
+    if (clean.length < 10) return false;
+    if (clean.startsWith('/')) return false;
+
+    // Регулярное выражение для поиска обещаний, договоренностей, дедлайнов и задач
+    const TRIGGER_REGEX = /(договор|сдела|глян|посмотр|провер|скин|отправ|дедлайн|срок|задач|настро|подключ|согласован|к пятниц|к понедельник|к вторник|к сред|к четверг|к суббот|к воскресень|до завтра|до конца|к концу|на следующ|на этой недел|до \d{1,2}|к \d{1,2}|план|исправ|передел|напомн|оплат|счет|инвойс|бюджет|правк|реклам|кампани|запуст|отключ|пауз|аудит|отчет|отчёт|свер|пересчит|созвон|встреч|зум|zoom|meet|task|deadline|погоджен|домовил|зробл|перевір|надішл)/i;
+
+    return TRIGGER_REGEX.test(clean);
+}
+
+/**
+ * Авто-распознавание задач из чата на лету (Webhook Trigger)
+ * Извлекает дедлайны/задачи, сохраняет в client_tasks и шлет alert в ЛС Дмитрию
+ */
+async function detectAndScheduleChatTask(db, client, msgData) {
+    if (!db || !client || !client.id || !msgData || !msgData.text) return null;
+    if (!shouldCheckMessageForTasks(msgData.text)) return null;
+
+    try {
+        const todayKyiv = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Kyiv' });
+        const tObj = new Date(todayKyiv + "T12:00:00Z");
+        tObj.setUTCDate(tObj.getUTCDate() + 1);
+        const tomorrowKyiv = tObj.toISOString().split('T')[0];
+
+        const systemPrompt = `Ты — аналитический AI-ассистент маркетингового агентства Aurelius (руководитель — Дмитрий).
+Твоя задача — извлечь из сообщения в рабочем чате с клиентом конкретную ДОГОВОРЕННОСТЬ, ЗАДАЧУ, ДЕДЛАЙН или ОБЕЩАНИЕ на будущее.
+
+Контекст:
+- Клиент: "${client.name || 'Клиент'}"
+- Автор сообщения: "${msgData.senderName}" (${msgData.isAdmin ? 'Дмитрий / Агентство' : 'Клиент'})
+- Сегодняшняя дата (Киев): ${todayKyiv} (завтра: ${tomorrowKyiv})
+
+Правила:
+1. Если сообщение — просто обсуждение, вопрос без обязательств, отчет о прошлом ("я вчера сделал"), спам, благодарность ("спасибо") или согласие без новой задачи — верни строго:
+{"isTask": false}
+
+2. Если сообщение содержит обещание сделать что-то в будущем, конкретную задачу или дедлайн (например: "гляну сайт к вечеру", "договорились, к среде сделаем", "скину доступы завтра", "нужно пересобрать кампанию к 15 октября", "отключу рекламу до пятницы", "созвонимся в четверг в 14:00") — верни:
+{
+  "isTask": true,
+  "taskText": "Краткая формулировка задачи (до 90 символов, четкое действие, например: Подготовить аудит кампаний)",
+  "targetDate": "YYYY-MM-DD" (рассчитай календарную дату исходя из ${todayKyiv}, например завтра -> ${tomorrowKyiv}, или точный день недели; если дата не определена, поставь "${todayKyiv}"),
+  "responsible": "agency" или "client" (agency если делает Дмитрий/агентство, client если обещает клиент)
+}
+
+Отвечай ИСКЛЮЧИТЕЛЬНО валидным JSON без markdown, без кавычек \`\`\`json, без лишних слов.`;
+
+        const userPrompt = `Сообщение: "${msgData.text}"`;
+
+        const llmRes = await callMarkLLM({
+            systemPrompt,
+            userPrompt,
+            temperature: 0.1,
+            maxTokens: 250
+        });
+
+        if (!llmRes || !llmRes.reply) return null;
+
+        let jsonStr = llmRes.reply.trim();
+        if (jsonStr.startsWith('```json')) jsonStr = jsonStr.slice(7);
+        if (jsonStr.startsWith('```')) jsonStr = jsonStr.slice(3);
+        if (jsonStr.endsWith('```')) jsonStr = jsonStr.slice(0, -3);
+        jsonStr = jsonStr.trim();
+
+        let parsed = null;
+        try {
+            parsed = JSON.parse(jsonStr);
+        } catch (pe) {
+            const m = jsonStr.match(/\{[\s\S]*\}/);
+            if (m) {
+                try { parsed = JSON.parse(m[0]); } catch (e) {}
+            }
+        }
+
+        if (!parsed || !parsed.isTask || !parsed.taskText) {
+            return null;
+        }
+
+        const taskText = parsed.taskText.trim();
+        let targetDate = parsed.targetDate;
+        if (!targetDate || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+            targetDate = todayKyiv;
+        }
+
+        const notifyDate = getDayBefore(targetDate) || todayKyiv;
+        const taskId = `task_${client.id}_msg${msgData.messageId || Date.now()}`;
+
+        const taskDoc = {
+            id: taskId,
+            clientId: client.id.toString(),
+            clientName: client.name || '',
+            text: taskText,
+            type: parsed.responsible === 'client' ? 'client' : 'agency',
+            targetDate: targetDate,
+            notifyDate: notifyDate,
+            status: 'pending',
+            notified: false,
+            source: 'chat_webhook',
+            detectedFromMsgId: (msgData.messageId || '').toString(),
+            detectedFromSender: msgData.senderName || '',
+            originalSnippet: msgData.text.slice(0, 250),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("client_tasks").doc(taskId).set(taskDoc, { merge: true });
+        console.log(`[Mark_Kernel] Auto-task detected & saved: "${taskText}" for ${client.name} (target: ${targetDate})`);
+
+        // Запись в лог событий клиента в CRM (clients_db/master)
+        try {
+            const masterRef = db.collection('artifacts').doc('aureliusclients')
+                .collection('public').doc('data')
+                .collection('clients_db').doc('master');
+            const snap = await masterRef.get();
+            if (snap.exists) {
+                const data = snap.data() || {};
+                const clients = data.clients || [];
+                const idx = clients.findIndex(c => String(c.id) === String(client.id));
+                if (idx !== -1) {
+                    if (!clients[idx].history) clients[idx].history = [];
+                    clients[idx].history.unshift({
+                        date: todayKyiv,
+                        text: `🤖 Задача из чата: ${taskText} (до ${targetDate})`
+                    });
+                    if (clients[idx].history.length > 50) clients[idx].history = clients[idx].history.slice(0, 50);
+                    await masterRef.set({ clients }, { merge: true });
+                }
+            }
+        } catch (hErr) {
+            console.warn('[Mark_Kernel] Could not append to client history:', hErr.message);
+        }
+
+        // Мгновенное личное уведомление Дмитрию в Telegram
+        try {
+            const roleBadge = parsed.responsible === 'client' ? '👤 Клиент' : '👔 Агентство (Дмитрий)';
+            const snippet = msgData.text.length > 140 ? msgData.text.slice(0, 140) + '...' : msgData.text;
+            const pmText = `📌 <b>АВТО-ЗАДАЧА ЗАФИКСИРОВАНА ИЗ ЧАТА</b>\n\n` +
+                `🏢 <b>Клиент:</b> ${escapeHtml(client.name || 'Клиент')}\n` +
+                `🎯 <b>Задача:</b> <b>${escapeHtml(taskText)}</b>\n` +
+                `⏳ <b>Дедлайн:</b> <code>${targetDate}</code> (${roleBadge})\n` +
+                `✍️ <b>Автор:</b> ${escapeHtml(msgData.senderName || 'Участник')}\n` +
+                `💬 <i>«${escapeHtml(snippet)}»</i>\n\n` +
+                `<i>Задача сохранена в карточке клиента и поставлена в расписание CRM.</i>`;
+
+            await sendTelegramMessage(MARK_CONFIG.ADMIN_CHAT_ID, pmText);
+        } catch (tgErr) {
+            console.error('[Mark_Kernel] Failed to send Telegram alert for auto-task:', tgErr.message);
+        }
+
+        return taskDoc;
+    } catch (err) {
+        console.error('[Mark_Kernel] detectAndScheduleChatTask error:', err.message);
+        return null;
     }
 }
 
@@ -275,7 +458,13 @@ async function processMarkUpdate(update, db) {
     }
 
     const msg = update.message;
-    if (!msg || !msg.text) return { status: 'NO_TEXT' };
+    if (!msg) return { status: 'NO_MESSAGE' };
+
+    const hasVoice = !!(msg.voice || msg.audio);
+    const rawVoice = msg.voice || msg.audio;
+    let text = (msg.text || msg.caption || '').trim();
+
+    if (!text && !hasVoice) return { status: 'NO_TEXT_OR_VOICE' };
 
     // Дедупликация апдейтов Telegram
     if (processedUpdatesCache.has(msg.message_id)) {
@@ -290,13 +479,55 @@ async function processMarkUpdate(update, db) {
     const startTime = Date.now();
     const chat = msg.chat;
     const from = msg.from || {};
-    const text = msg.text.trim();
     const senderName = from.first_name || from.username || 'Клиент';
     const isPrivate = chat.type === 'private';
-    const botMention = /@myconversionsbotppcdmitrobot/i.test(text);
-    const isAdmin = String(from.id) === String(MARK_CONFIG.ADMIN_CHAT_ID);
+    const isAdmin = String(from.id) === String(MARK_CONFIG.ADMIN_CHAT_ID) ||
+                    String(from.username || '').toLowerCase() === 'dimscreamer' ||
+                    String(from.username || '').toLowerCase() === 'aurelius_admin';
     const isBot = !!from.is_bot;
     const isClient = !isBot && !isAdmin;
+
+    // Проверяем: отвечает ли пользователь напрямую на сообщение Марка (через функцию «Ответить» / Reply)
+    const myBotId = String(MARK_CONFIG.TELEGRAM_TOKEN.split(':')[0] || '7811513232');
+    const replyTo = msg.reply_to_message;
+    const isReplyToMark = !!(
+        replyTo &&
+        replyTo.from &&
+        (
+            String(replyTo.from.id) === myBotId ||
+            (replyTo.from.is_bot && String(replyTo.from.username || '').toLowerCase() === 'myconversionsbotppcdmitrobot') ||
+            (replyTo.from.username && replyTo.from.username.toLowerCase().includes('conversionsbot'))
+        )
+    );
+
+    // === ОБРАБОТКА ГОЛОСОВОГО СООБЩЕНИЯ (VOICE / AUDIO) ===
+    if (hasVoice) {
+        sendChatAction(chat.id, 'record_audio');
+        try {
+            console.log(`[Mark_Kernel] Voice message received in chat ${chat.id} (file_id: ${rawVoice.file_id}, duration: ${rawVoice.duration || 0}s). Downloading...`);
+            const fileData = await getTelegramFileAsBase64(rawVoice.file_id);
+            if (fileData && fileData.base64) {
+                const transcribed = await transcribeVoiceAudio(fileData.base64, fileData.format);
+                if (transcribed && transcribed.trim()) {
+                    text = transcribed.trim();
+                    console.log(`[Mark_Kernel] Voice successfully transcribed: "${text}"`);
+                } else {
+                    console.warn('[Mark_Kernel] Voice transcription returned empty text.');
+                }
+            }
+        } catch (vErr) {
+            console.error('[Mark_Kernel] Voice transcription error:', vErr.message);
+        }
+
+        // Если голос не удалось расшифровать
+        if (!text) {
+            if (isPrivate || isReplyToMark) {
+                await sendTelegramMessage(chat.id, "🎙️ <i>Не удалось разобрать голосовое сообщение (слишком тихо или помехи). Пожалуйста, повторите или напишите текстом.</i>", msg.message_id);
+                return { status: 'VOICE_TRANSCRIBE_EMPTY' };
+            }
+            return { status: 'VOICE_IGNORED_NOT_ADDRESSED' };
+        }
+    }
 
     // === 1. СОХРАНЕНИЕ СООБЩЕНИЯ В FIRESTORE ДЛЯ АРХИВА И ПСИХОТИПА ===
     const client = await getClientByTelegramChatId(chat.id, db);
@@ -310,16 +541,33 @@ async function processMarkUpdate(update, db) {
             isClient: isClient,
             isAdmin: isAdmin,
             isMark: false,
-            isBot: isBot,
-            text: text
+            text: hasVoice ? `🎙️ [Голосовое]: ${text}` : text
         });
+
+        // === 1.1 АВТО-РАСПОЗНАВАНИЕ ЗАДАЧ ИЗ ЧАТА НА ЛЕТУ (WEBHOOK TRIGGER) ===
+        if (!isBot && text) {
+            await detectAndScheduleChatTask(db, client, {
+                messageId: msg.message_id,
+                chatId: chat.id,
+                senderName: senderName,
+                isAdmin: isAdmin,
+                isClient: isClient,
+                text: text
+            });
+        }
     }
 
-    // В группах Марк отвечает только при упоминании имени или команды
+    // В группах Марк отвечает если:
+    // 1. Это личный чат (isPrivate)
+    // 2. Или ответ на сообщение Марка через функцию «Ответить» (isReplyToMark) -> ключевое слово НЕ НУЖНО!
+    // 3. Или в тексте/голосовом есть упоминание бота (@myconversionsbotppcdmitrobot)
+    // 4. Или в тексте/голосовом есть ключевое слово Марк (isNameCall)
+    // 5. Или это команда (/start, /os, /stats и т.д.)
+    const botMention = /@myconversionsbotppcdmitrobot/i.test(text);
     const isNameCall = /(марк|марку|марке|марком|mark|маркус|marcus|аурелиус|aurelius)/i.test(text);
     const isCommand = text.startsWith('/');
 
-    if (!isPrivate && !botMention && !isNameCall && !isCommand) {
+    if (!isPrivate && !isReplyToMark && !botMention && !isNameCall && !isCommand) {
         return { status: 'IGNORED_GROUP_MSG' };
     }
 
@@ -492,6 +740,14 @@ async function processMarkUpdate(update, db) {
     const cleanUserPrompt = text.replace(/(^|[^а-яА-ЯёЁa-zA-Z0-9_])(марк|марку|марке|марком|mark|маркус|marcus|аурелиус|aurelius|бот|bot)[,:\s]*/gi, '')
                                 .replace(/@myconversionsbotppcdmitrobot/gi, '').trim() || text;
 
+    // Если сообщение является ответом на конкретную реплику (Reply to Message), обогащаем контекст цитатой
+    let promptWithReplyContext = cleanUserPrompt;
+    if (replyTo && (replyTo.text || replyTo.caption)) {
+        const repliedSnippet = (replyTo.text || replyTo.caption || '').trim().slice(0, 300);
+        const repliedAuthor = replyTo.from?.is_bot ? 'Марк' : (replyTo.from?.first_name || 'Собеседник');
+        promptWithReplyContext = `[Ответ на реплику (${repliedAuthor}): "${repliedSnippet}"]\n${cleanUserPrompt}`;
+    }
+
     let history = chatHistoryMemory.get(chat.id.toString()) || [];
 
     // Собираем контекст активного модуля
@@ -523,7 +779,7 @@ ${adsContext.contextText}
         aiRes = await callMarkLLM({
             systemPrompt,
             messages,
-            userPrompt: cleanUserPrompt,
+            userPrompt: promptWithReplyContext,
             senderName,
             temperature: 0.7,
             maxTokens: 2500
@@ -581,6 +837,7 @@ ${adsContext.contextText}
     logOutput += `\n═══════════════\nREQUEST\n═══════════════\n\n`;
     logOutput += `User........... ${from.id || 'Unknown'}\n`;
     logOutput += `Chat........... ${chat.title || 'Telegram'}\n`;
+    logOutput += `Type........... ${hasVoice ? 'VOICE' : 'TEXT'}${isReplyToMark ? ' (REPLY_TO_MARK)' : ''}\n`;
     logOutput += `Message........ ${text}\n`;
     logOutput += `Received....... ${nowStr.split(' ')[1] || '00:00:00'}\n`;
 
@@ -612,6 +869,7 @@ ${adsContext.contextText}
 
 module.exports = {
     saveClientMessage,
+    detectAndScheduleChatTask,
     processMarkUpdate,
     getClientByTelegramChatId,
     checkAndIncrementMarkUsage,
