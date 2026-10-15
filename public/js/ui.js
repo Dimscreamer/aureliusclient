@@ -59,7 +59,8 @@ window.updateAnalytics = function() {
     let extraRevenueThisMonth = 0;
     let retainerRevenueThisMonth = 0;
     const flowHistory = {}; const topClients = [];
-    
+    const flowHistoryDetails = {}; // mKey -> [{ clientId, clientName, dateStr, amount, isExtra, note }]
+
     clientsData.forEach(c => {
         const logic = getClientLogic(c); const amt = parseFloat(c.amount) || 0; let clientFactSum = 0;
         if (c.history) {
@@ -76,6 +77,16 @@ window.updateAnalytics = function() {
                         clientFactSum += val; 
                         totalActualReceived += val; 
                         flowHistory[mKey] = (flowHistory[mKey] || 0) + val;
+
+                        if (!flowHistoryDetails[mKey]) flowHistoryDetails[mKey] = [];
+                        flowHistoryDetails[mKey].push({
+                            clientId: c.id,
+                            clientName: c.name || 'Без имени',
+                            dateStr: h.date,
+                            amount: val,
+                            isExtra: h.text.includes('(Доп)'),
+                            note: h.text
+                        });
 
                         if (h.text.includes('(Доп)')) {
                             extraTotal += val;
@@ -101,15 +112,31 @@ window.updateAnalytics = function() {
         }
     });
 
-    document.getElementById('stat-total-revenue').innerText = `$${totalActualReceived.toLocaleString()}`;
+    // Карточка 1: Заработано в этом месяце (Главный фокус)
+    const currentMonthEarned = retainerRevenueThisMonth + extraRevenueThisMonth;
+    const currentMonthEl = document.getElementById('stat-current-month-revenue');
+    if (currentMonthEl) {
+        currentMonthEl.innerText = `$${currentMonthEarned.toLocaleString()}`;
+    }
+
+    // Подвал первой карточки (LTV + Разбивка)
+    const totalRevEl = document.getElementById('stat-total-revenue');
+    if (totalRevEl) {
+        totalRevEl.innerText = `$${totalActualReceived.toLocaleString()}`;
+    }
     const breakdownEl = document.getElementById('revenue-breakdown');
     if (breakdownEl) {
         breakdownEl.innerHTML = `
-            <div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-cyan-400"></div> <span>Ведение: $${retainerTotal.toLocaleString()}</span></div>
-            <div class="flex items-center gap-2 text-purple-400"><div class="w-2 h-2 rounded-full bg-purple-400"></div> <span>Доп. услуги: $${extraTotal.toLocaleString()}</span></div>
+            <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-cyan-400"></div> <span class="text-gray-300">Ведение: $${retainerTotal.toLocaleString()}</span></div>
+            <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-purple-400"></div> <span class="text-purple-400">Допы: $${extraTotal.toLocaleString()}</span></div>
         `;
     }
 
+    // Карточка 2: Прогноз
+    const forecastLabelEl = document.getElementById('label-forecast-revenue');
+    if (forecastLabelEl) {
+        forecastLabelEl.innerText = `Прогноз на ${currentMonthYear.split(' ')[0]}`;
+    }
     document.getElementById('stat-forecast-revenue').innerText = `$${forecastRevenue.toLocaleString()}`;
     document.getElementById('stat-overdue-revenue').innerText = `$${totalOverdue.toLocaleString()}`;
     
@@ -118,8 +145,7 @@ window.updateAnalytics = function() {
         activeCountEl.innerText = clientsData.filter(c => !c.archived && c.status === 'Активен').length;
     }
 
-    const monthlyTotalRevenue = retainerRevenueThisMonth + extraRevenueThisMonth;
-    const upsellPower = monthlyTotalRevenue > 0 ? (extraRevenueThisMonth / monthlyTotalRevenue) * 100 : 0;
+    const upsellPower = currentMonthEarned > 0 ? (extraRevenueThisMonth / currentMonthEarned) * 100 : 0;
     
     const upsellPercentEl = document.getElementById('stat-upsell-percent');
     if (upsellPercentEl) upsellPercentEl.innerText = `${Math.round(upsellPower)}%`;
@@ -127,8 +153,8 @@ window.updateAnalytics = function() {
     const barRetainerEl = document.getElementById('bar-retainer');
     const barUpsellEl = document.getElementById('bar-upsell');
     if (barRetainerEl && barUpsellEl) {
-        const retainerPct = monthlyTotalRevenue > 0 ? (retainerRevenueThisMonth / monthlyTotalRevenue) * 100 : 100;
-        const upsellPct = monthlyTotalRevenue > 0 ? (extraRevenueThisMonth / monthlyTotalRevenue) * 100 : 0;
+        const retainerPct = currentMonthEarned > 0 ? (retainerRevenueThisMonth / currentMonthEarned) * 100 : 100;
+        const upsellPct = currentMonthEarned > 0 ? (extraRevenueThisMonth / currentMonthEarned) * 100 : 0;
         barRetainerEl.style.width = `${retainerPct}%`;
         barUpsellEl.style.width = `${upsellPct}%`;
     }
@@ -189,14 +215,80 @@ window.updateAnalytics = function() {
     }
     const ltvCont = document.getElementById('ltv-stats-container');
     if(ltvCont) ltvCont.innerHTML = topClients.sort((a,b) => b.sum - a.sum).slice(0, 5).map(item => `<div class="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5"><span class="text-[10px] text-gray-400 font-bold uppercase truncate max-w-[120px]">${item.name}</span><span class="text-cyan-400 font-bold">$${item.sum.toLocaleString()}</span></div>`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase">Нет оплат</p>';
+    
+    // Денежный поток с интерактивным раскрытием деталей платежей
     const monthCont = document.getElementById('monthly-stats-container');
     if(monthCont) {
-        const sorted = Object.keys(flowHistory).sort((a,b) => { const p = (s) => new Date(s.split(' ')[1], ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'].indexOf(s.split(' ')[0])); return p(b) - p(a); });
-        monthCont.innerHTML = sorted.map(m => `<div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl"><span class="text-[11px] text-gray-400 font-bold uppercase">${m}</span><span class="text-white font-bold">$${flowHistory[m].toLocaleString()}</span></div>`).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase text-center">История пуста</p>';
+        const sorted = Object.keys(flowHistory).sort((a,b) => { 
+            const p = (s) => new Date(s.split(' ')[1], ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'].indexOf(s.split(' ')[0])); 
+            return p(b) - p(a); 
+        });
+
+        monthCont.innerHTML = sorted.map((m, idx) => {
+            const details = flowHistoryDetails[m] || [];
+            const isCurrent = m === currentMonthYear;
+            const borderAccent = isCurrent ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-white/5 bg-white/5';
+            const badgeAccent = isCurrent ? '<span class="text-[8px] bg-cyan-400/10 text-cyan-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-2">Текущий</span>' : '';
+            
+            const detailsHtml = details.map(item => `
+                <div class="flex items-center justify-between py-2 px-3 border-b border-white/5 last:border-0 hover:bg-white/5 rounded-lg transition-colors cursor-pointer" onclick="openClientProfile('${item.clientId}')">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <i data-lucide="${item.isExtra ? 'sparkles' : 'check-circle'}" class="w-3.5 h-3.5 ${item.isExtra ? 'text-purple-400' : 'text-cyan-400'} shrink-0"></i>
+                        <div class="min-w-0">
+                            <span class="text-[11px] text-white font-bold truncate block">${item.clientName}</span>
+                            <span class="text-[9px] text-gray-500 font-mono block">${item.dateStr.split(',')[0]}</span>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-2">
+                        <span class="text-xs font-bold ${item.isExtra ? 'text-purple-400' : 'text-emerald-400'}">+$${item.amount.toLocaleString()}</span>
+                        ${item.isExtra ? '<span class="text-[8px] text-purple-400 block uppercase font-bold">Доп. услуга</span>' : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+            <div class="rounded-2xl border ${borderAccent} overflow-hidden transition-all duration-300">
+                <div class="flex items-center justify-between p-4 cursor-pointer select-none hover:bg-white/5 transition-colors" onclick="toggleMonthFlowDetails('${idx}')">
+                    <div class="flex items-center">
+                        <i data-lucide="chevron-right" id="month-flow-icon-${idx}" class="w-4 h-4 text-gray-500 mr-2 transition-transform duration-200"></i>
+                        <span class="text-[11px] text-gray-300 font-bold uppercase tracking-wider">${m}</span>
+                        ${badgeAccent}
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-gray-500 font-semibold">${details.length} плат.</span>
+                        <span class="text-white font-bold text-sm tracking-wide">$${flowHistory[m].toLocaleString()}</span>
+                    </div>
+                </div>
+                <div id="month-flow-body-${idx}" class="hidden border-t border-white/5 bg-black/20 p-2 space-y-1">
+                    <div class="px-2 py-1 text-[9px] text-gray-500 uppercase tracking-widest font-bold flex justify-between">
+                        <span>Кто оплатил</span>
+                        <span>Сумма</span>
+                    </div>
+                    ${detailsHtml || '<p class="text-[10px] text-gray-600 p-2 text-center">Нет деталей</p>'}
+                </div>
+            </div>`;
+        }).join('') || '<p class="text-gray-600 text-[10px] py-4 uppercase text-center">История пуста</p>';
+
+        if (window.lucide) lucide.createIcons();
     }
     
     processCohortData();
     renderRevenueTrendChart(activeClientsForecastSum);
+};
+
+window.toggleMonthFlowDetails = function(idx) {
+    const body = document.getElementById(`month-flow-body-${idx}`);
+    const icon = document.getElementById(`month-flow-icon-${idx}`);
+    if (body) {
+        const isHidden = body.classList.contains('hidden');
+        if (isHidden) {
+            body.classList.remove('hidden');
+            if (icon) icon.classList.add('rotate-90');
+        } else {
+            body.classList.add('hidden');
+            if (icon) icon.classList.remove('rotate-90');
+        }
+    }
 };
 
 window.processCohortData = function() {
